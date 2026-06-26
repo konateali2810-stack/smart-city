@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    @keyframes glow-pulse { 0%,100%{opacity:.7;transform:scale(1);} 50%{opacity:1;transform:scale(1.15);} }
+    @keyframes win-flicker { 0%,100%{opacity:.85;} 50%{opacity:1;} }
+    @keyframes balloon-float { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-14px);} }
+    @keyframes shimmer { 0%,100%{opacity:.25;} 50%{opacity:.45;} }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: radial-gradient(ellipse 110% 85% at 50% 18%, #4a5896 0%, #313a6e 42%, #20264c 100%);
+      color: #e0e6ff; overflow: hidden;
+    }
+  </style>
+</helmet>
+
+<div style="
+  width: 100vw; height: 100vh; position: relative;
+  background: radial-gradient(ellipse 110% 85% at 50% 18%, #4a5896 0%, #313a6e 42%, #20264c 100%);
+  display: flex; align-items: center; justify-content: center;
+">
+  <div style="position: absolute; top: 24px; left: 28px; z-index: 100;">
+    <h1 style="
+      font-size: 30px; font-weight: 700; margin: 0 0 2px 0;
+      background: linear-gradient(120deg, #5ee7ff, #a78bfa, #ff7eb6);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      letter-spacing: -0.5px;
+    ">Smart City</h1>
+    <p style="font-size: 11px; color: #7a85a8; margin: 0; text-transform: uppercase; letter-spacing: 2.5px;">Parc Informatique · Vue temps réel</p>
+  </div>
+
+  <svg style="width: 97%; height: 97%;" viewBox="0 0 1400 1150" preserveAspectRatio="xMidYMid meet" id="citySvg">
+    <defs>
+      <radialGradient id="groundGrad" cx="50%" cy="38%" r="74%">
+        <stop offset="0%" stop-color="#566aa8"/>
+        <stop offset="55%" stop-color="#36426c"/>
+        <stop offset="100%" stop-color="#222a4c"/>
+      </radialGradient>
+      <linearGradient id="waterGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#2a9df4"/>
+        <stop offset="100%" stop-color="#0a347e"/>
+      </linearGradient>
+      <radialGradient id="vignette" cx="50%" cy="44%" r="66%">
+        <stop offset="0%" stop-color="#0a0e22" stop-opacity="0"/>
+        <stop offset="84%" stop-color="#0a0e22" stop-opacity="0"/>
+        <stop offset="100%" stop-color="#12173a" stop-opacity="0.38"/>
+      </radialGradient>
+      <radialGradient id="lampPool" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#ffe7a0" stop-opacity="0.5"/>
+        <stop offset="100%" stop-color="#ffe7a0" stop-opacity="0"/>
+      </radialGradient>
+      <filter id="winGlow" x="-60%" y="-60%" width="220%" height="220%">
+        <feGaussianBlur stdDeviation="2.2" result="b"/>
+        <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+      <filter id="softGlow" x="-90%" y="-90%" width="280%" height="280%">
+        <feGaussianBlur stdDeviation="5" result="b"/>
+        <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+      <filter id="aoBlur" x="-60%" y="-60%" width="220%" height="220%">
+        <feGaussianBlur stdDeviation="9"/>
+      </filter>
+    </defs>
+
+    {{ sceneSvg }}
+
+    <rect x="0" y="0" width="1400" height="1150" fill="url(#vignette)" pointer-events="none"/>
+  </svg>
+
+  <div style="
+    position: fixed; bottom: 28px; left: 28px;
+    background: rgba(13, 18, 40, 0.92);
+    border: 1px solid rgba(94, 231, 255, 0.25);
+    border-radius: 14px; padding: 18px 22px;
+    backdrop-filter: blur(14px);
+    color: #e0e6ff; font-size: 13px;
+    min-width: 290px; max-width: 340px; z-index: 50;
+    opacity: {{ tooltipOpacity }};
+    transform: translateY({{ tooltipY }});
+    pointer-events: none; transition: all 0.25s ease;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 30px rgba(94, 231, 255, 0.12);
+  ">
+    <div style="display: flex; align-items: center; gap: 9px; margin-bottom: 14px;">
+      <span style="width: 10px; height: 10px; border-radius: 50%; background: {{ currentBuilding.glowColor }}; box-shadow: 0 0 10px {{ currentBuilding.glowColor }};"></span>
+      <span style="font-weight: 700; font-size: 15px; letter-spacing: 0.3px;">{{ currentBuilding.name }}</span>
+    </div>
+    <div style="display: grid; gap: 9px;">
+      <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid rgba(255,255,255,0.07); padding-bottom: 9px;">
+        <span style="color: #8a93b5;">Machines totales</span>
+        <strong style="color: #5ee7ff; font-size: 16px;">{{ currentBuilding.machines }}</strong>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid rgba(255,255,255,0.07); padding-bottom: 9px;">
+        <span style="color: #8a93b5;">Serveurs</span>
+        <strong style="color: #a78bfa; font-size: 16px;">{{ currentBuilding.servers }}</strong>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid rgba(255,255,255,0.07); padding-bottom: 9px;">
+        <span style="color: #8a93b5;">Équipements réseau</span>
+        <strong style="color: #4ade80; font-size: 16px;">{{ currentBuilding.network }}</strong>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 2px;">
+        <span style="color: #8a93b5;">Statut</span>
+        <strong style="color: {{ currentBuilding.statusColor }}; font-size: 13px;">{{ currentBuilding.status }}</strong>
+      </div>
+    </div>
+  </div>
+
+  <div style="position: absolute; bottom: 22px; right: 26px; font-size: 11px; color: #5a6588; text-align: right; line-height: 1.7;">
+    <p style="margin: 0;">Survolez un bâtiment pour ses détails</p>
+    <p style="margin: 0;">Taille proportionnelle au nombre de machines</p>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;$preview&quot;: {
+    &quot;width&quot;: &quot;100vw&quot;,
+    &quot;height&quot;: &quot;100vh&quot;
+  }
+}">
+class Component extends DCLogic {
+  state = { hoveredBuilding: null };
+
+  TW = 62; TH = 31; OX = 700; OY = 360;
+
+  buildingSpecs = [
+    { id: 'achat-culturel',   name: 'ACHAT CULTUREL',   machines: 14, servers: 0, network: 0, gx: 2.2, gy: 0.3, w: 2,   d: 2,   color: '#7c3aed', win: '#c4b5fd', glowColor: '#a78bfa', dome: true },
+    { id: 'achat-frais',      name: 'ACHAT FRAIS',      machines: 34, servers: 0, network: 0, gx: 7.3, gy: 0.2, w: 2,   d: 2,   color: '#16a34a', win: '#86efac', glowColor: '#4ade80', greenery: true },
+    { id: 'achat-bazar',      name: 'ACHAT BAZAR',      machines: 12, servers: 0, network: 0, gx: 0.3, gy: 3.2, w: 2,   d: 2,   color: '#db2777', win: '#fbbf24', glowColor: '#f472b6', multi: true },
+    { id: 'business-center',  name: 'BUSINESS CENTER',  machines: 10, servers: 3, network: 1, gx: 5.0, gy: 3.2, w: 1.8, d: 1.8, color: '#0891b2', win: '#67e8f9', glowColor: '#22d3ee', tower: true },
+    { id: 'achat-sec',        name: 'ACHAT SEC',        machines: 50, servers: 0, network: 0, gx: 8.0, gy: 4.0, w: 3,   d: 2,   color: '#475569', win: '#cbd5e1', glowColor: '#94a3b8', warehouse: true },
+    { id: 'casino-2-plateau', name: 'CASINO 2 PLATEAU', machines: 16, servers: 0, network: 0, gx: 2.2, gy: 7.0, w: 3,   d: 2,   color: '#0284c7', win: '#bae6fd', glowColor: '#38bdf8', solar: true },
+    { id: 'casino-allabra',   name: 'CASINO ALLABRA',   machines: 19, servers: 0, network: 0, gx: 7.2, gy: 7.6, w: 2,   d: 2,   color: '#be123c', win: '#fda4af', glowColor: '#fb7185', garden: true },
+  ];
+
+  iso(gx, gy, gz = 0) {
+    return { x: this.OX + (gx - gy) * this.TW, y: this.OY + (gx + gy) * this.TH - gz };
+  }
+  shade(hex, amt) {
+    const n = parseInt(hex.slice(1), 16);
+    let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+    if (amt >= 0) { r += (255 - r) * amt; g += (255 - g) * amt; b += (255 - b) * amt; }
+    else { r *= (1 + amt); g *= (1 + amt); b *= (1 + amt); }
+    return `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;
+  }
+  lerp(p, q, t) { return { x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t }; }
+  pts(arr) { return arr.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' '); }
+
+  grad(id, c0, c1, vertical) {
+    return React.createElement('linearGradient', {
+      key: id, id, gradientUnits: 'objectBoundingBox',
+      x1: 0, y1: 0, x2: vertical ? 0 : 1, y2: vertical ? 1 : 1,
+    }, [
+      React.createElement('stop', { key: 's0', offset: '0%', stopColor: c0 }),
+      React.createElement('stop', { key: 's1', offset: '100%', stopColor: c1 }),
+    ]);
+  }
+
+  // petit cuboïde plein (toits, voitures, mobilier)
+  cuboid(gx, gy, w, d, z0, z1, color, key, lift = 0) {
+    const Z = (z) => z + lift;
+    const T00 = this.iso(gx, gy, Z(z1)), T10 = this.iso(gx + w, gy, Z(z1));
+    const T11 = this.iso(gx + w, gy + d, Z(z1)), T01 = this.iso(gx, gy + d, Z(z1));
+    const B10 = this.iso(gx + w, gy, Z(z0)), B11 = this.iso(gx + w, gy + d, Z(z0)), B01 = this.iso(gx, gy + d, Z(z0));
+    return React.createElement('g', { key }, [
+      React.createElement('polygon', { key: 'r', points: this.pts([T10, T11, B11, B10]), fill: this.shade(color, -0.4) }),
+      React.createElement('polygon', { key: 'l', points: this.pts([T01, T11, B11, B01]), fill: this.shade(color, -0.18) }),
+      React.createElement('polygon', { key: 't', points: this.pts([T00, T10, T11, T01]), fill: this.shade(color, 0.18) }),
+    ]);
+  }
+
+  windowsOnFace(topA, topB, botA, botB, cols, rows, color, key) {
+    const els = [];
+    const pt = (u, v) => this.lerp(this.lerp(topA, topB, u), this.lerp(botA, botB, u), v);
+    const mU = 0.12, mV = 0.10, gU = (1 - mU * 2) / cols, gV = (1 - mV * 2) / rows;
+    const wFrac = 0.64, hFrac = 0.62;
+    for (let i = 0; i < cols; i++) {
+      for (let j = 0; j < rows; j++) {
+        const u0 = mU + i * gU + gU * (1 - wFrac) / 2, u1 = u0 + gU * wFrac;
+        const v0 = mV + j * gV + gV * (1 - hFrac) / 2, v1 = v0 + gV * hFrac;
+        const lit = ((i * 7 + j * 3 + key.length) % 5) !== 0;
+        els.push(React.createElement('polygon', {
+          key: `w-${key}-${i}-${j}`, points: this.pts([pt(u0, v0), pt(u1, v0), pt(u1, v1), pt(u0, v1)]),
+          fill: lit ? color : '#15203a', opacity: lit ? 0.95 : 0.5,
+        }));
+      }
+    }
+    return els;
+  }
+
+  // bandeau lumineux rez-de-chaussée (boutiques)
+  storefront(topA, topB, botA, botB, color, key) {
+    const pt = (u, v) => this.lerp(this.lerp(topA, topB, u), this.lerp(botA, botB, u), v);
+    return React.createElement('polygon', {
+      key, points: this.pts([pt(0.06, 0.82), pt(0.94, 0.82), pt(0.94, 0.97), pt(0.06, 0.97)]),
+      fill: color, opacity: 0.9, filter: 'url(#winGlow)',
+    });
+  }
+
+  // corniches d'étage + pilastres + plinthe sur une face
+  facadeDetail(topA, topB, botA, botB, cols, rows, color, key) {
+    const pt = (u, v) => this.lerp(this.lerp(topA, topB, u), this.lerp(botA, botB, u), v);
+    const els = [];
+    const cor = this.shade(color, 0.18), pil = this.shade(color, -0.34), plin = this.shade(color, -0.52);
+    // plinthe (socle)
+    els.push(React.createElement('polygon', { key: `pl-${key}`, points: this.pts([pt(0.03, 0.9), pt(0.97, 0.9), pt(0.97, 1), pt(0.03, 1)]), fill: plin, opacity: 0.85 }));
+    // corniches horizontales entre étages
+    const mV = 0.10, gV = (1 - mV * 2) / rows;
+    for (let r = 1; r < rows; r++) {
+      const v = mV + r * gV;
+      els.push(React.createElement('line', { key: `cor-${key}-${r}`, x1: pt(0.06, v).x, y1: pt(0.06, v).y, x2: pt(0.94, v).x, y2: pt(0.94, v).y, stroke: cor, strokeWidth: 0.8, opacity: 0.38 }));
+    }
+    // pilastres verticaux
+    const mU = 0.12, gU = (1 - mU * 2) / cols;
+    for (let c = 1; c < cols; c++) {
+      const u = mU + c * gU;
+      els.push(React.createElement('line', { key: `pil-${key}-${c}`, x1: pt(u, 0.1).x, y1: pt(u, 0.1).y, x2: pt(u, 0.88).x, y2: pt(u, 0.88).y, stroke: pil, strokeWidth: 0.8, opacity: 0.32 }));
+    }
+    return els;
+  }
+
+  buildingDepth(s) { return s.gx + s.gy + (s.w + s.d) / 4; }
+
+  buildingGradients(spec) {
+    const c = spec.color;
+    return [
+      this.grad(`g-${spec.id}-roof`, this.shade(c, 0.30), this.shade(c, 0.08), false),
+      this.grad(`g-${spec.id}-left`, this.shade(c, -0.02), this.shade(c, -0.32), true),
+      this.grad(`g-${spec.id}-right`, this.shade(c, -0.28), this.shade(c, -0.55), true),
+    ];
+  }
+
+  createBuilding(spec, hovered) {
+    const { gx, gy, w, d, color } = spec;
+    const isHover = hovered === spec.id;
+    const lift = isHover ? 14 : 0;
+    const H = 46 + spec.machines * 4.0 + (spec.tower ? 150 : 0);
+    const z = (gz) => gz + lift;
+
+    const T00 = this.iso(gx, gy, z(H)), T10 = this.iso(gx + w, gy, z(H));
+    const T11 = this.iso(gx + w, gy + d, z(H)), T01 = this.iso(gx, gy + d, z(H));
+    const B10 = this.iso(gx + w, gy, z(0)), B11 = this.iso(gx + w, gy + d, z(0)), B01 = this.iso(gx, gy + d, z(0));
+
+    const children = [];
+
+    // Faces avec dégradés
+    children.push(React.createElement('polygon', { key: 'fr', points: this.pts([T10, T11, B11, B10]), fill: `url(#g-${spec.id}-right)` }));
+    children.push(React.createElement('polygon', { key: 'fl', points: this.pts([T01, T11, B11, B01]), fill: `url(#g-${spec.id}-left)` }));
+    children.push(React.createElement('polygon', { key: 'rf', points: this.pts([T00, T10, T11, T01]), fill: `url(#g-${spec.id}-roof)` }));
+
+    // Parapet (liseré de toit)
+    children.push(React.createElement('polyline', { key: 'par', points: this.pts([T01, T00, T10]), fill: 'none', stroke: this.shade(color, 0.5), strokeWidth: 1.3, opacity: 0.55 }));
+
+    const winColor = isHover ? '#fff0bf' : spec.win;
+    const colsR = Math.max(2, Math.round(w * 2.2)), colsL = Math.max(2, Math.round(d * 2.2));
+    const rows = Math.max(3, Math.round(H / 32));
+
+    // Détails de façade (corniches d'étage, pilastres, plinthe)
+    children.push(React.createElement('g', { key: 'fdR' }, this.facadeDetail(T10, T11, B10, B11, colsR, rows, color, 'r' + spec.id)));
+    children.push(React.createElement('g', { key: 'fdL' }, this.facadeDetail(T01, T11, B01, B11, colsL, rows, color, 'l' + spec.id)));
+
+    // Fenêtres
+    const wins = [
+      ...this.windowsOnFace(T10, T11, B10, B11, colsR, rows, this.shade(winColor, -0.04), 'r' + spec.id),
+      ...this.windowsOnFace(T01, T11, B01, B11, colsL, rows, winColor, 'l' + spec.id),
+    ];
+    children.push(React.createElement('g', { key: 'wins', filter: 'url(#winGlow)' }, wins));
+
+    // Rez-de-chaussée lumineux (boutiques) sur la face avant-gauche
+    children.push(this.storefront(T01, T11, B01, B11, this.shade(spec.glowColor, 0.15), 'sf' + spec.id));
+
+    // Entrée / auvent lumineux centré
+    const ptL = (u, v) => this.lerp(this.lerp(T01, T11, u), this.lerp(B01, B11, u), v);
+    children.push(React.createElement('polygon', { key: 'door', points: this.pts([ptL(0.44, 0.79), ptL(0.56, 0.79), ptL(0.56, 0.99), ptL(0.44, 0.99)]), fill: this.shade(spec.glowColor, 0.35), opacity: 0.95, filter: 'url(#winGlow)' }));
+    children.push(React.createElement('polyline', { key: 'canopy', points: this.pts([ptL(0.4, 0.79), ptL(0.6, 0.79)]), fill: 'none', stroke: this.shade(color, 0.4), strokeWidth: 2.4, opacity: 0.8 }));
+
+    // Arête lumineuse coin avant
+    children.push(React.createElement('line', { key: 'edge', x1: T11.x, y1: T11.y, x2: B11.x, y2: B11.y, stroke: this.shade(color, 0.55), strokeWidth: 1.6, opacity: 0.55 }));
+
+    // Équipements de toit
+    const rc = this.iso(gx + w / 2, gy + d / 2, z(H));
+    if (spec.tower) {
+      // tour à double retrait + antenne
+      children.push(this.cuboid(gx + 0.4, gy + 0.4, w - 0.8, d - 0.8, H, H + 30, color, 'set' + spec.id, lift));
+      children.push(this.cuboid(gx + 0.7, gy + 0.7, w - 1.4, d - 1.4, H + 30, H + 46, color, 'set2' + spec.id, lift));
+      const tip = this.iso(gx + w / 2, gy + d / 2, z(H + 92)), base = this.iso(gx + w / 2, gy + d / 2, z(H + 46));
+      children.push(React.createElement('line', { key: 'ant', x1: base.x, y1: base.y, x2: tip.x, y2: tip.y, stroke: '#67e8f9', strokeWidth: 2 }));
+      children.push(React.createElement('circle', { key: 'tip', cx: tip.x, cy: tip.y, r: 5, fill: '#67e8f9', filter: 'url(#softGlow)' }));
+    } else {
+      // unités techniques métalliques (sauf toit végétalisé)
+      if (!spec.greenery) {
+        children.push(this.cuboid(gx + 0.3, gy + 0.34, 0.32, 0.3, H, H + 7, '#525c72', 'ac1' + spec.id, lift));
+        children.push(this.cuboid(gx + w - 0.66, gy + d - 0.62, 0.28, 0.26, H, H + 6, '#444d61', 'ac2' + spec.id, lift));
+      }
+      if (spec.warehouse) {
+        for (let i = 1; i < 4; i++) {
+          const a = this.iso(gx + (w * i / 4), gy, z(H)), b = this.iso(gx + (w * i / 4), gy + d, z(H));
+          children.push(React.createElement('line', { key: 'rib' + i, x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: this.shade(color, 0.08), strokeWidth: 2, opacity: 0.55 }));
+        }
+        for (let i = 0; i < 3; i++) children.push(this.cuboid(gx + 0.45 + i * 0.85, gy + 0.7, 0.45, 0.5, H, H + 4, '#8b97b3', 'sky' + i + spec.id, lift));
+      }
+      if (spec.greenery) {
+        for (let i = 0; i < 5; i++) children.push(React.createElement('circle', { key: 'g' + i, cx: rc.x - 28 + i * 14, cy: rc.y - 3 - (i % 2) * 5, r: 7, fill: i % 2 ? '#22c55e' : '#16a34a', opacity: 0.95 }));
+        children.push(this.cuboid(gx + 0.3, gy + 0.3, 0.36, 0.34, H, H + 13, '#94a3b8', 'wt' + spec.id, lift));
+      }
+      if (spec.multi) {
+        ['#fbbf24', '#22d3ee', '#f472b6'].forEach((col, i) => {
+          const p = this.iso(gx + 0.45 + i * 0.5, gy + 0.5, z(H + 16 + i * 4));
+          children.push(React.createElement('rect', { key: 'sg' + i, x: p.x - 5, y: p.y - 11, width: 10, height: 15, fill: col, rx: 2, filter: 'url(#winGlow)' }));
+        });
+      }
+      if (spec.dome) {
+        // verrière / dôme (médiathèque)
+        children.push(React.createElement('ellipse', { key: 'dome', cx: rc.x, cy: rc.y - 7, rx: 32, ry: 17, fill: this.shade(spec.glowColor, 0.2), opacity: 0.8, filter: 'url(#softGlow)' }));
+        children.push(React.createElement('ellipse', { key: 'dome2', cx: rc.x, cy: rc.y - 10, rx: 19, ry: 10, fill: this.shade(spec.win, 0.25), opacity: 0.92 }));
+        children.push(React.createElement('line', { key: 'domeL', x1: rc.x - 18, y1: rc.y - 9, x2: rc.x + 18, y2: rc.y - 9, stroke: '#fff', strokeWidth: 0.6, opacity: 0.5 }));
+      }
+      if (spec.solar) {
+        for (let i = 0; i < 3; i++) {
+          const p = this.iso(gx + 0.6 + i * 0.7, gy + 0.7, z(H + 5));
+          children.push(React.createElement('polygon', { key: 'sol' + i, points: this.pts([{ x: p.x - 13, y: p.y - 3 }, { x: p.x + 2, y: p.y - 9 }, { x: p.x + 13, y: p.y - 3 }, { x: p.x - 2, y: p.y + 3 }]), fill: '#1e3a8a', stroke: '#3b82f6', strokeWidth: 0.6, opacity: 0.85 }));
+        }
+      }
+      if (spec.garden) {
+        for (let i = 0; i < 4; i++) children.push(React.createElement('circle', { key: 'gd' + i, cx: rc.x - 20 + i * 13, cy: rc.y - 2 - (i % 2) * 4, r: 5.5, fill: '#22c55e', opacity: 0.9 }));
+      }
+    }
+
+    // Marqueur de localisation
+    const mk = this.iso(gx + w / 2, gy + d / 2, z(H + 70));
+    children.push(React.createElement('g', { key: 'marker', style: { transformOrigin: `${mk.x}px ${mk.y}px`, animation: 'glow-pulse 2.4s ease-in-out infinite' } }, [
+      React.createElement('path', { key: 'pin', d: `M ${mk.x} ${mk.y} C ${mk.x - 11} ${mk.y - 14}, ${mk.x - 11} ${mk.y - 30}, ${mk.x} ${mk.y - 30} C ${mk.x + 11} ${mk.y - 30}, ${mk.x + 11} ${mk.y - 14}, ${mk.x} ${mk.y} Z`, fill: spec.glowColor, opacity: 0.95, filter: 'url(#softGlow)' }),
+      React.createElement('circle', { key: 'dot', cx: mk.x, cy: mk.y - 22, r: 4.5, fill: '#0d1228' }),
+    ]));
+
+    if (isHover) {
+      const lab = this.iso(gx + w / 2, gy + d / 2, z(H + 92));
+      children.push(React.createElement('text', { key: 'label', x: lab.x, y: lab.y, textAnchor: 'middle', style: { fontSize: '13px', fontWeight: 700, fill: '#fff', letterSpacing: '0.5px' } }, spec.name));
+    }
+
+    return React.createElement('g', {
+      key: spec.id,
+      style: { cursor: 'pointer', transition: 'all 0.25s cubic-bezier(0.34,1.4,0.64,1)' },
+      onMouseEnter: () => this.setState({ hoveredBuilding: spec.id }),
+      onMouseLeave: () => this.setState({ hoveredBuilding: null }),
+    }, children);
+  }
+
+  // occlusion ambiante au sol sous un bâtiment
+  buildingAO(s) {
+    const c = this.iso(s.gx + s.w / 2, s.gy + s.d / 2, 0);
+    return React.createElement('ellipse', { key: 'ao-' + s.id, cx: c.x, cy: c.y + 6, rx: (s.w + s.d) * 18, ry: (s.w + s.d) * 9, fill: '#05070f', opacity: 0.5, filter: 'url(#aoBlur)' });
+  }
+
+  createGround() {
+    const els = [], g0 = 0, g1 = 11;
+    els.push(React.createElement('polygon', { key: 'ground', fill: 'url(#groundGrad)', points: this.pts([this.iso(g0, g0), this.iso(g1, g0), this.iso(g1, g1), this.iso(g0, g1)]) }));
+    for (let i = g0; i <= g1; i++) {
+      els.push(React.createElement('line', { key: 'gx' + i, x1: this.iso(i, g0).x, y1: this.iso(i, g0).y, x2: this.iso(i, g1).x, y2: this.iso(i, g1).y, stroke: '#3a4a72', strokeWidth: 0.5, opacity: 0.16 }));
+      els.push(React.createElement('line', { key: 'gy' + i, x1: this.iso(g0, i).x, y1: this.iso(g0, i).y, x2: this.iso(g1, i).x, y2: this.iso(g1, i).y, stroke: '#3a4a72', strokeWidth: 0.5, opacity: 0.16 }));
+    }
+    return React.createElement('g', { key: 'groundgrp' }, els);
+  }
+
+  createRoads() {
+    const els = [];
+    const road = (ax, ay, bx, by, half, k) => {
+      const c = (ay === by)
+        ? [this.iso(ax, ay - half), this.iso(bx, by - half), this.iso(bx, by + half), this.iso(ax, ay + half)]
+        : [this.iso(ax - half, ay), this.iso(bx - half, by), this.iso(bx + half, by), this.iso(ax + half, ay)];
+      els.push(React.createElement('polygon', { key: 'road' + k, points: this.pts(c), fill: '#2c3858', opacity: 0.9 }));
+      // ligne médiane pointillée
+      const n = 9;
+      for (let i = 0; i < n; i++) {
+        const t0 = i / n + 0.02, t1 = t0 + 0.045;
+        const p0 = this.lerp(this.iso(ax, ay), this.iso(bx, by), t0), p1 = this.lerp(this.iso(ax, ay), this.iso(bx, by), t1);
+        els.push(React.createElement('line', { key: `dash${k}-${i}`, x1: p0.x, y1: p0.y, x2: p1.x, y2: p1.y, stroke: '#5a6a92', strokeWidth: 1.4, opacity: 0.6 }));
+      }
+    };
+    road(0, 2.6, 11, 2.6, 0.34, 'h1');
+    road(0, 6.2, 11, 6.2, 0.34, 'h2');
+    road(4.5, 0, 4.5, 11, 0.32, 'v1');
+    // passages piétons aux intersections
+    const cross = (cx, cy, k) => {
+      for (let i = 0; i < 5; i++) {
+        const off = -0.26 + i * 0.13;
+        const a = this.iso(cx + off, cy - 0.32), b = this.iso(cx + off, cy + 0.32);
+        els.push(React.createElement('line', { key: 'cw' + k + i, x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: '#cfd8f0', strokeWidth: 1.5, opacity: 0.32 }));
+      }
+    };
+    cross(4.5, 2.6, 'a'); cross(4.5, 6.2, 'b');
+    return React.createElement('g', { key: 'roads' }, els);
+  }
+
+  createWater() {
+    const c = [this.iso(-0.5, 8.5), this.iso(3, 8.5), this.iso(3, 11.5), this.iso(-0.5, 11.5)];
+    const els = [React.createElement('polygon', { key: 'water', points: this.pts(c), fill: 'url(#waterGrad)', opacity: 0.9 })];
+    for (let i = 0; i < 6; i++) {
+      const p = this.iso(-0.2 + i * 0.5, 9.2 + (i % 2) * 0.7);
+      els.push(React.createElement('ellipse', { key: 'rf' + i, cx: p.x, cy: p.y, rx: 16, ry: 4.5, fill: '#9fd8ff', opacity: 0.3, style: { animation: `shimmer ${3 + i * 0.4}s ease-in-out infinite` } }));
+    }
+    const pa = this.iso(1.4, 8.0), pb = this.iso(1.4, 9.7);
+    els.push(React.createElement('line', { key: 'bridge', x1: pa.x, y1: pa.y, x2: pb.x, y2: pb.y, stroke: '#c2410c', strokeWidth: 9, opacity: 0.9, strokeLinecap: 'round' }));
+    return React.createElement('g', { key: 'watergrp' }, els);
+  }
+
+  createPlaza() {
+    const els = [], c = this.iso(5.5, 9.0);
+    els.push(React.createElement('ellipse', { key: 'plaza', cx: c.x, cy: c.y, rx: 96, ry: 48, fill: '#28344f', opacity: 0.85 }));
+    els.push(React.createElement('ellipse', { key: 'court', cx: c.x, cy: c.y, rx: 66, ry: 33, fill: '#173a2c', opacity: 0.9 }));
+    els.push(React.createElement('ellipse', { key: 'cline', cx: c.x, cy: c.y, rx: 22, ry: 11, fill: 'none', stroke: '#4ade80', strokeWidth: 1.2, opacity: 0.5 }));
+    els.push(React.createElement('circle', { key: 'fount', cx: c.x, cy: c.y, r: 7, fill: '#5ee7ff', opacity: 0.8, filter: 'url(#softGlow)' }));
+    return React.createElement('g', { key: 'plazagrp' }, els);
+  }
+
+  createTree(gx, gy, scale, key) {
+    const base = this.iso(gx, gy, 0), top = this.iso(gx, gy, 30 * scale);
+    return React.createElement('g', { key }, [
+      React.createElement('ellipse', { key: 'sh', cx: base.x + 4, cy: base.y + 3, rx: 13 * scale, ry: 5 * scale, fill: '#05070f', opacity: 0.4, filter: 'url(#aoBlur)' }),
+      React.createElement('line', { key: 'tr', x1: base.x, y1: base.y, x2: top.x, y2: top.y + 7, stroke: '#5b3a1f', strokeWidth: 3 * scale }),
+      React.createElement('circle', { key: 'f0', cx: top.x, cy: top.y + 2, r: 14 * scale, fill: '#14532d' }),
+      React.createElement('circle', { key: 'f1', cx: top.x - 5 * scale, cy: top.y - 6 * scale, r: 10 * scale, fill: '#22c55e' }),
+      React.createElement('circle', { key: 'f2', cx: top.x + 6 * scale, cy: top.y - 2 * scale, r: 8.5 * scale, fill: '#16a34a' }),
+      React.createElement('circle', { key: 'f3', cx: top.x + 1 * scale, cy: top.y - 11 * scale, r: 6 * scale, fill: '#4ade80' }),
+    ]);
+  }
+
+  createCar(gx, gy, color, key) {
+    return React.createElement('g', { key }, [
+      React.createElement('ellipse', { key: 'sh', cx: this.iso(gx, gy, 0).x + 2, cy: this.iso(gx, gy, 0).y + 3, rx: 11, ry: 4, fill: '#05070f', opacity: 0.4, filter: 'url(#aoBlur)' }),
+      this.cuboid(gx - 0.1, gy - 0.1, 0.34, 0.2, 0, 9, color, 'cb' + key),
+    ]);
+  }
+
+  createLamp(gx, gy, key) {
+    const base = this.iso(gx, gy, 0), top = this.iso(gx, gy, 36);
+    return React.createElement('g', { key }, [
+      React.createElement('ellipse', { key: 'pool', cx: base.x, cy: base.y, rx: 34, ry: 17, fill: 'url(#lampPool)' }),
+      React.createElement('line', { key: 'p', x1: base.x, y1: base.y, x2: top.x, y2: top.y, stroke: '#475569', strokeWidth: 1.6 }),
+      React.createElement('circle', { key: 'b', cx: top.x, cy: top.y, r: 4, fill: '#ffe7a0', opacity: 0.95, filter: 'url(#softGlow)', style: { animation: 'win-flicker 3s ease-in-out infinite' } }),
+    ]);
+  }
+
+  createPerson(gx, gy, color, key) {
+    const base = this.iso(gx, gy, 0), head = this.iso(gx, gy, 13);
+    return React.createElement('g', { key }, [
+      React.createElement('ellipse', { key: 'sh', cx: base.x + 2, cy: base.y + 2, rx: 5, ry: 2, fill: '#05070f', opacity: 0.4 }),
+      React.createElement('line', { key: 'bd', x1: base.x, y1: base.y, x2: head.x, y2: head.y + 4, stroke: color, strokeWidth: 2.4, strokeLinecap: 'round' }),
+      React.createElement('circle', { key: 'hd', cx: head.x, cy: head.y, r: 2.6, fill: '#f1d4b3' }),
+    ]);
+  }
+
+  renderVals() {
+    const hovered = this.state.hoveredBuilding;
+    const current = hovered ? this.buildingSpecs.find(b => b.id === hovered) : null;
+
+    const depthObjs = [];
+    this.buildingSpecs.forEach(s => depthObjs.push({ depth: this.buildingDepth(s), el: this.createBuilding(s, hovered) }));
+
+    const trees = [[4,1,1],[6.2,1.1,0.9],[0.4,1.2,1],[3.4,3.6,0.85],[7.4,3.4,1],[4.2,5.4,0.9],[6.6,6.6,1],[1.2,6.4,0.95],[9.3,2.0,1],[10.2,1.2,0.85],[0.5,6.6,1],[9.0,8.4,0.95],[3.6,9.2,0.9],[7.2,5.2,0.85],[10.4,6.0,0.9],[6.0,4.4,0.8]];
+    trees.forEach((t, i) => depthObjs.push({ depth: t[0] + t[1] + 0.1, el: this.createTree(t[0], t[1], t[2], 'tree' + i) }));
+
+    const cars = [[2.6,2.55,'#f97316'],[6.5,2.65,'#22d3ee'],[4.45,5.0,'#fbbf24'],[4.55,8.2,'#ef4444'],[3.4,2.6,'#e2e8f0'],[8.1,6.2,'#a78bfa']];
+    cars.forEach((c, i) => depthObjs.push({ depth: c[0] + c[1] + 0.15, el: this.createCar(c[0], c[1], c[2], 'car' + i) }));
+
+    const lamps = [[1.0,2.6],[8.0,2.6],[4.5,1.0],[4.5,9.8],[10.0,5.2],[0.6,6.2]];
+    lamps.forEach((l, i) => depthObjs.push({ depth: l[0] + l[1] + 0.05, el: this.createLamp(l[0], l[1], 'lamp' + i) }));
+
+    const people = [[5.2,9.2,'#60a5fa'],[5.8,8.8,'#f472b6'],[4.9,8.6,'#fbbf24'],[6.1,9.4,'#34d399'],[3.0,6.3,'#a78bfa'],[7.0,6.4,'#fb7185'],[4.6,5.6,'#e2e8f0']];
+    people.forEach((p, i) => depthObjs.push({ depth: p[0] + p[1] + 0.2, el: this.createPerson(p[0], p[1], p[2], 'pers' + i) }));
+
+    depthObjs.sort((a, b) => a.depth - b.depth);
+
+    const defs = React.createElement('defs', { key: 'bgrads' }, this.buildingSpecs.flatMap(s => this.buildingGradients(s)));
+    const aoLayer = React.createElement('g', { key: 'ao' }, this.buildingSpecs.map(s => this.buildingAO(s)));
+
+    const scene = React.createElement('g', { key: 'scene' }, [
+      defs,
+      this.createGround(),
+      this.createWater(),
+      this.createRoads(),
+      this.createPlaza(),
+      aoLayer,
+      React.createElement('g', { key: 'balloon', style: { animation: 'balloon-float 5s ease-in-out infinite' } }, [
+        React.createElement('ellipse', { key: 'b1', cx: 980, cy: 175, rx: 27, ry: 31, fill: '#f472b6', opacity: 0.92 }),
+        React.createElement('ellipse', { key: 'b2', cx: 980, cy: 175, rx: 9, ry: 31, fill: '#fbbf24', opacity: 0.85 }),
+        React.createElement('rect', { key: 'b3', x: 974, y: 210, width: 12, height: 9, fill: '#92400e', rx: 1 }),
+        React.createElement('line', { key: 'b4', x1: 968, y1: 201, x2: 975, y2: 210, stroke: '#92400e', strokeWidth: 1 }),
+        React.createElement('line', { key: 'b5', x1: 992, y1: 201, x2: 985, y2: 210, stroke: '#92400e', strokeWidth: 1 }),
+      ]),
+      ...depthObjs.map(o => o.el),
+    ]);
+
+    return {
+      sceneSvg: scene,
+      tooltipOpacity: current ? 1 : 0,
+      tooltipY: current ? '0px' : '12px',
+      currentBuilding: current
+        ? { ...current, status: '✓ Opérationnel', statusColor: '#4ade80' }
+        : { name: '', machines: 0, servers: 0, network: 0, glowColor: '#5ee7ff', status: '', statusColor: '#4ade80' },
+    };
+  }
+}
+</script>
+</body>
+</html>

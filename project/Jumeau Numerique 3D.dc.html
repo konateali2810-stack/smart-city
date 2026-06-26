@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    @keyframes halo-pulse { 0%,100%{ opacity:.35; transform:scale(1);} 50%{ opacity:.6; transform:scale(1.12);} }
+    @keyframes led-blink { 0%,100%{ opacity:1;} 50%{ opacity:.45;} }
+    @keyframes panel-in { from{ transform:translateX(24px); opacity:0;} to{ transform:translateX(0); opacity:1;} }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0f1420; color: #1f2733;
+      overflow: hidden;
+    }
+    .seg-btn:hover { background: rgba(255,255,255,0.10) !important; }
+    .site-tab:hover { color: #fff !important; }
+    .res-row:hover { background: #f1f5fb !important; }
+    #twinScene g[data-device] { cursor: pointer; }
+  </style>
+</helmet>
+
+<div style="width:100vw; height:100vh; display:flex; flex-direction:column; background:#0f1420; overflow:hidden;">
+
+  <!-- ===== Barre supérieure ===== -->
+  <div style="flex:0 0 auto; display:flex; align-items:center; gap:18px; padding:11px 18px; background:linear-gradient(180deg,#161d2e,#121828); border-bottom:1px solid #232c42; z-index:30;">
+    <div style="display:flex; align-items:center; gap:11px;">
+      <div style="width:30px; height:30px; border-radius:8px; background:linear-gradient(135deg,#3b82f6,#22d3ee); display:flex; align-items:center; justify-content:center; box-shadow:0 0 16px rgba(59,130,246,0.4);">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M3 9l9-6 9 6v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V9z" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/></svg>
+      </div>
+      <div>
+        <div style="font-size:14px; font-weight:700; color:#eaf0fb; letter-spacing:0.2px; line-height:1.1;">Jumeau Numérique</div>
+        <div style="font-size:10px; color:#6b7791; text-transform:uppercase; letter-spacing:1.6px;">Parc informatique · {{ siteName }}</div>
+      </div>
+    </div>
+
+    <!-- Onglets sites -->
+    <div style="display:flex; gap:2px; background:#0e1422; padding:3px; border-radius:9px; border:1px solid #222b40;">
+      <sc-for list="{{ siteTabs }}" as="t" hint-placeholder-count="7">
+        <button class="site-tab" onClick="{{ t.onSelect }}" style="border:none; cursor:pointer; padding:6px 11px; border-radius:7px; font-size:11px; font-weight:600; letter-spacing:0.2px; background:{{ t.bg }}; color:{{ t.color }}; transition:all .15s; white-space:nowrap;">{{ t.short }}</button>
+      </sc-for>
+    </div>
+
+    <div style="flex:1;"></div>
+
+    <!-- Recherche -->
+    <div style="position:relative; width:300px;">
+      <div style="display:flex; align-items:center; gap:8px; background:#0e1422; border:1px solid #2a3550; border-radius:9px; padding:7px 11px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#6b7791" stroke-width="2"/><path d="M21 21l-4-4" stroke="#6b7791" stroke-width="2" stroke-linecap="round"/></svg>
+        <input value="{{ query }}" onInput="{{ onSearch }}" placeholder="Machine, IP, utilisateur…" style="flex:1; background:transparent; border:none; outline:none; color:#dce4f2; font-size:12px; font-family:inherit;"/>
+      </div>
+      <sc-if value="{{ hasResults }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute; top:42px; left:0; right:0; background:#fff; border-radius:10px; box-shadow:0 16px 40px rgba(0,0,0,0.45); overflow:hidden; z-index:60; max-height:320px; overflow-y:auto;">
+          <sc-for list="{{ results }}" as="r" hint-placeholder-count="4">
+            <div class="res-row" onClick="{{ r.onPick }}" style="display:flex; align-items:center; gap:10px; padding:9px 12px; cursor:pointer; border-bottom:1px solid #eef2f8;">
+              <span style="width:8px; height:8px; border-radius:50%; background:{{ r.statusColor }}; flex:0 0 auto;"></span>
+              <div style="flex:1; min-width:0;">
+                <div style="font-size:12px; font-weight:600; color:#1f2733; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ r.name }}</div>
+                <div style="font-size:10.5px; color:#7b8699;">{{ r.sub }}</div>
+              </div>
+              <span style="font-size:10px; color:#9aa6ba; text-transform:uppercase; letter-spacing:0.5px;">{{ r.typeLabel }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+    </div>
+
+    <!-- Contrôles navigation -->
+    <div style="display:flex; align-items:center; gap:3px; background:#0e1422; padding:3px; border-radius:9px; border:1px solid #222b40;">
+      <button class="seg-btn" onClick="{{ onRotateLeft }}" title="Pivoter à gauche" style="border:none; cursor:pointer; width:30px; height:28px; border-radius:6px; background:transparent; color:#aeb9d0; display:flex; align-items:center; justify-content:center;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M9 5L4 10l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 10h11a5 5 0 0 1 5 5v0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <button class="seg-btn" onClick="{{ onRotateRight }}" title="Pivoter à droite" style="border:none; cursor:pointer; width:30px; height:28px; border-radius:6px; background:transparent; color:#aeb9d0; display:flex; align-items:center; justify-content:center;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M15 5l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 10H9a5 5 0 0 0-5 5v0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <div style="width:1px; height:18px; background:#2a3550; margin:0 2px;"></div>
+      <button class="seg-btn" onClick="{{ onZoomOut }}" title="Zoom arrière" style="border:none; cursor:pointer; width:30px; height:28px; border-radius:6px; background:transparent; color:#aeb9d0; font-size:18px; line-height:1;">−</button>
+      <button class="seg-btn" onClick="{{ onZoomIn }}" title="Zoom avant" style="border:none; cursor:pointer; width:30px; height:28px; border-radius:6px; background:transparent; color:#aeb9d0; font-size:16px; line-height:1;">+</button>
+      <button class="seg-btn" onClick="{{ onResetView }}" title="Recentrer" style="border:none; cursor:pointer; height:28px; padding:0 9px; border-radius:6px; background:transparent; color:#aeb9d0; font-size:11px; font-weight:600;">Reset</button>
+    </div>
+  </div>
+
+  <!-- ===== Scène + panneaux ===== -->
+  <div style="flex:1; position:relative; overflow:hidden; background:radial-gradient(ellipse 90% 80% at 50% 30%, #e8edf6 0%, #cdd6e6 55%, #aab6cc 100%);">
+
+    <svg id="twinSvg" style="width:100%; height:100%; display:block;" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid meet"
+         onWheel="{{ onWheel }}" onMouseDown="{{ onPanStart }}" onMouseMove="{{ onPanMove }}" onMouseUp="{{ onPanEnd }}" onMouseLeave="{{ onPanEnd }}">
+      <defs>
+        <filter id="floorShadow" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="26" stdDeviation="30" flood-color="#5a6a85" flood-opacity="0.18"/></filter>
+        <filter id="softSh" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="6"/></filter>
+        <filter id="haloBlur" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="3.4"/></filter>
+        <filter id="ledGlow" x="-120%" y="-120%" width="340%" height="340%"><feGaussianBlur stdDeviation="1.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        <radialGradient id="lightPool" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#fff7e6" stop-opacity="0.5"/>
+          <stop offset="100%" stop-color="#fff7e6" stop-opacity="0"/>
+        </radialGradient>
+        <radialGradient id="floorWash" gradientUnits="userSpaceOnUse" cx="800" cy="360" r="560">
+          <stop offset="0%" stop-color="#ffffff" stop-opacity="0.42"/>
+          <stop offset="68%" stop-color="#ffffff" stop-opacity="0.05"/>
+          <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+        </radialGradient>
+        <linearGradient id="glassGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#e2eefa"/>
+          <stop offset="52%" stop-color="#c6dAeF"/>
+          <stop offset="100%" stop-color="#abc6e0"/>
+        </linearGradient>
+        <linearGradient id="glassGrad2" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#d2e2f2"/>
+          <stop offset="100%" stop-color="#9fb8d4"/>
+        </linearGradient>
+      </defs>
+      <g id="twinViewport" transform="{{ viewTransform }}">
+        <g id="twinScene">{{ sceneSvg }}</g>
+      </g>
+    </svg>
+
+    <!-- Tooltip survol -->
+    <div id="twinTip" style="position:fixed; left:0; top:0; z-index:70; pointer-events:none; opacity:0; transform:translateY(6px); transition:opacity .12s; min-width:230px; max-width:280px; background:rgba(17,23,38,0.96); border:1px solid rgba(120,140,180,0.28); border-radius:11px; padding:0; box-shadow:0 14px 40px rgba(0,0,0,0.45); overflow:hidden; backdrop-filter:blur(8px);"></div>
+
+    <!-- Légende statuts -->
+    <div style="position:absolute; left:16px; bottom:14px; display:flex; gap:14px; background:rgba(17,23,38,0.82); border:1px solid rgba(120,140,180,0.2); padding:8px 14px; border-radius:10px; backdrop-filter:blur(6px);">
+      <div style="display:flex; align-items:center; gap:6px;"><span style="width:9px;height:9px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e;"></span><span style="font-size:11px;color:#c4cee0;">En ligne {{ countOnline }}</span></div>
+      <div style="display:flex; align-items:center; gap:6px;"><span style="width:9px;height:9px;border-radius:50%;background:#f59e0b;box-shadow:0 0 8px #f59e0b;"></span><span style="font-size:11px;color:#c4cee0;">Alerte {{ countAlert }}</span></div>
+      <div style="display:flex; align-items:center; gap:6px;"><span style="width:9px;height:9px;border-radius:50%;background:#ef4444;box-shadow:0 0 8px #ef4444;"></span><span style="font-size:11px;color:#c4cee0;">Hors ligne {{ countOffline }}</span></div>
+      <div style="display:flex; align-items:center; gap:6px;"><span style="width:9px;height:9px;border-radius:50%;background:#9ca3af;"></span><span style="font-size:11px;color:#c4cee0;">Inconnu {{ countUnknown }}</span></div>
+    </div>
+
+    <!-- Compteur machines -->
+    <div style="position:absolute; right:16px; bottom:14px; display:flex; align-items:center; gap:9px; background:rgba(17,23,38,0.82); border:1px solid rgba(120,140,180,0.2); padding:9px 15px; border-radius:10px; backdrop-filter:blur(6px);">
+      <span style="font-size:22px; font-weight:800; color:#5eead4; line-height:1;">{{ siteTotal }}</span>
+      <div style="line-height:1.2;"><div style="font-size:10px; color:#8a96ad; text-transform:uppercase; letter-spacing:1px;">équipements</div><div style="font-size:10px; color:#8a96ad;">{{ siteName }}</div></div>
+    </div>
+
+    <!-- Astuce navigation -->
+    <div style="position:absolute; left:50%; transform:translateX(-50%); bottom:14px; font-size:10.5px; color:#475067; background:rgba(255,255,255,0.55); padding:5px 12px; border-radius:20px;">Glisser pour déplacer · Molette pour zoomer · Pivoter avec les flèches</div>
+
+    <!-- ===== Panneau latéral détail ===== -->
+    <sc-if value="{{ panelOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute; top:0; right:0; bottom:0; width:360px; background:#fff; box-shadow:-8px 0 40px rgba(0,0,0,0.28); z-index:80; display:flex; flex-direction:column; animation:panel-in .22s ease;">
+        <div style="padding:18px 20px; background:linear-gradient(135deg,{{ sel.accent }},{{ sel.accent2 }}); position:relative;">
+          <button onClick="{{ onClosePanel }}" style="position:absolute; top:14px; right:14px; width:28px; height:28px; border:none; border-radius:7px; background:rgba(255,255,255,0.2); color:#fff; cursor:pointer; font-size:15px; line-height:1;">✕</button>
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="width:10px; height:10px; border-radius:50%; background:{{ sel.statusColor }}; box-shadow:0 0 10px {{ sel.statusColor }};"></span>
+            <span style="font-size:11px; color:rgba(255,255,255,0.9); text-transform:uppercase; letter-spacing:1px;">{{ sel.typeLabel }}</span>
+          </div>
+          <div style="font-size:19px; font-weight:800; color:#fff; letter-spacing:0.2px;">{{ sel.name }}</div>
+          <div style="font-size:12px; color:rgba(255,255,255,0.85); margin-top:3px;">{{ sel.statusLabel }} · {{ sel.ip }}</div>
+        </div>
+
+        <div style="flex:1; overflow-y:auto; padding:6px 0;">
+          <sc-for list="{{ sel.fields }}" as="f" hint-placeholder-count="9">
+            <div style="display:flex; justify-content:space-between; align-items:baseline; gap:14px; padding:10px 20px; border-bottom:1px solid #f1f4f9;">
+              <span style="font-size:11.5px; color:#8a93a5; flex:0 0 auto;">{{ f.k }}</span>
+              <span style="font-size:12.5px; color:#1f2733; font-weight:600; text-align:right; word-break:break-word;">{{ f.v }}</span>
+            </div>
+          </sc-for>
+
+          <div style="padding:16px 20px 8px;">
+            <div style="font-size:11px; font-weight:700; color:#8a93a5; text-transform:uppercase; letter-spacing:1px; margin-bottom:10px;">Historique des alertes</div>
+            <sc-for list="{{ sel.alerts }}" as="a" hint-placeholder-count="3">
+              <div style="display:flex; gap:10px; padding:8px 0; border-bottom:1px solid #f4f6fa;">
+                <span style="width:7px; height:7px; border-radius:50%; background:{{ a.color }}; margin-top:5px; flex:0 0 auto;"></span>
+                <div style="flex:1;">
+                  <div style="font-size:12px; color:#2a3340; font-weight:500;">{{ a.msg }}</div>
+                  <div style="font-size:10.5px; color:#9aa6ba; margin-top:2px;">{{ a.date }}</div>
+                </div>
+              </div>
+            </sc-for>
+            <sc-if value="{{ sel.noAlerts }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:12px; color:#9aa6ba; padding:6px 0;">Aucune alerte enregistrée.</div>
+            </sc-if>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;$preview&quot;: { &quot;width&quot;: &quot;100vw&quot;, &quot;height&quot;: &quot;100vh&quot; }
+}">
+class Component extends DCLogic {
+  state = { siteId: 'asec', orientation: 0, selectedId: null, query: '' };
+
+  // ---- projection ----
+  TW = 30; TH = 15;
+
+  SITE_META = [
+    { id:'abaz',    name:'ACHAT BAZAR',     short:'BAZAR',    prefix:'ABAZ',    subnet:'10.10.22',   ws:12, servers:0, switches:2, accent:'#db2777', accent2:'#9d174d' },
+    { id:'acult',   name:'ACHAT CULTUREL',  short:'CULTUREL', prefix:'ACULT',   subnet:'10.10.42',   ws:14, servers:0, switches:2, accent:'#7c3aed', accent2:'#5b21b6' },
+    { id:'afrais',  name:'ACHAT FRAIS',     short:'FRAIS',    prefix:'AFRAIS',  subnet:'10.105.1',   ws:34, servers:0, switches:3, accent:'#16a34a', accent2:'#166534' },
+    { id:'asec',    name:'ACHAT SEC',       short:'SEC',      prefix:'ASEC',    subnet:'10.10.23',   ws:50, servers:0, switches:4, accent:'#0891b2', accent2:'#155e75' },
+    { id:'bcenter', name:'BUSINESS CENTER', short:'BUSINESS', prefix:'BCENTER', subnet:'10.110.150', ws:10, servers:3, switches:1, accent:'#2563eb', accent2:'#1e40af' },
+    { id:'ca2p',    name:'CASINO 2 PLATEAU',short:'2 PLATEAU',prefix:'CA2P',    subnet:'10.108.110', ws:16, servers:0, switches:2, accent:'#0284c7', accent2:'#075985' },
+    { id:'cal',     name:'CASINO ALLABRA',  short:'ALLABRA',  prefix:'CAL',     subnet:'10.110.110', ws:19, servers:0, switches:2, accent:'#e11d48', accent2:'#9f1239' },
+  ];
+
+  SUFFIXES = ['DIALLO','KOUAME','AKONE','SBAKARI','DKOUASSI','PKOUAME','JYNDRI','EKOKO','PRET','DIRECTEUR','RECEPTION','OPERATEUR','RAYONSEC','RAYONFRAIS','ASSISTRAF','SECRETAR','ANDOUBA','IKONE','MAKOFFI','MAZAHUI','PKADJO','HZEINAB','MSETCH','TGALLE','LKOUDOU','BOUCHERIE','MKANDE','HKOKOR','LHOUINDO','ESIDIBE','RKASSAM','MFAMIAH','TSALWAN','NDIALLO','PKOUKOUA','LSEKA','MADJA','SGOHO','TSASHA','OKOUAKOU','HFAKIH','AAKADJE','CAYELO','MGNABRO','GNIAMKEY','ROTRAORE','MDJEDJE','YSYLLA','LFAKHRY','OKOUADIO','HTIMITE','STAGE','SNDJA','RAF','HOTESSE','SSERI','FANEY','HEKOUASSI','ADIARRA','ICONE','DLIDEI','IABROU','MAKOFFI2','BENKOUA','AROYOR','FJETHA','ASAMNOTRA','ABLEDOU','STOURE','GKOUAME','ANDJA'];
+  FIRST = ['Karim','Aya','Yao','Awa','Kofi','Aminata','Jean','Marie','Ibrahim','Fatou','Serge','Adjoua','Moussa','Nadia','Eric','Sandra','Olivier','Salimata','David','Grace'];
+  LAST  = ['Koné','Traoré','Diabaté','Yao','Ouattara','Bamba','Cissé','Touré','Koffi','Diallo','Aké','N\u2019Guessan','Kouassi','Tanoh','Brou','Adou','Coulibaly','Soro','Gnamien','Kanga'];
+  DESKTOP_MODELS = ['HP Desktop Pro 300 G3','HP Desktop Pro 300 G6 Microtower','Dell Vostro 3888','LENOVO ThinkCentre 11SE','LENOVO ThinkCentre 11HD','HP Pro Tower 290 G9','HP 290 G1 MT'];
+  LAPTOP_MODELS = ['HP 250 G8 Notebook','HP 250 G10 Notebook','HP ProBook 450 G10','HP EliteBook 840 G10','Lenovo ThinkPad E14','HP Pavilion 15'];
+  SERVER_MODELS = ['Nutanix AHV Node','HPE ProLiant DL380 Gen10','Dell PowerEdge R740'];
+  SWITCH_MODELS = ['Cisco Catalyst 2960-X','Aruba 2530-48G','HPE OfficeConnect 1920S'];
+  OS_DESKTOP = ['Windows 10 Pro','Windows 11 Pro'];
+
+  TYPE_LABEL = { desktop:'Poste fixe', laptop:'Ordinateur portable', server:'Serveur', switch:'Switch', router:'Routeur', firewall:'Pare-feu', ups:'Onduleur', printer:'Imprimante', wifi:'Point d\u2019accès WiFi' };
+  STATUS_LABEL = { online:'En ligne', alert:'Alerte', offline:'Hors ligne', unknown:'Inconnu' };
+  STATUS_COLOR = { online:'#22c55e', alert:'#f59e0b', offline:'#ef4444', unknown:'#9ca3af' };
+
+  // view (instance, not state — avoids scene rebuild on pan/zoom)
+  view = { zoom: 1.3, panX: 0, panY: 0 };
+  _pan = null;
+
+  // ---------- utils ----------
+  hash(s){ let h=2166136261; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619);} return h>>>0; }
+  rng(seed){ let a=seed>>>0; return ()=>{ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+  shade(hex, amt){ const n=parseInt(hex.slice(1),16); let r=(n>>16)&255,g=(n>>8)&255,b=n&255; if(amt>=0){r+=(255-r)*amt;g+=(255-g)*amt;b+=(255-b)*amt;} else {r*=(1+amt);g*=(1+amt);b*=(1+amt);} return `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`; }
+  pad(n){ return n<10?'0'+n:''+n; }
+
+  // ---------- data ----------
+  constructor(props){
+    super(props);
+    this.sites = {};
+    this.SITE_META.forEach(m => { this.sites[m.id] = this.buildSite(m); });
+  }
+
+  buildSite(m){
+    const rnd = this.rng(this.hash(m.id));
+    const devices = [];
+    // ----- layout -----
+    const deskCols = Math.min(8, Math.max(4, Math.round(Math.sqrt(m.ws * 0.95))));
+    const rows = Math.ceil(m.ws / deskCols);
+    const ox = 1.4, oy = 1.5, xStep = 1.5, pairGap = 2.55, inGap = 0.92;
+    const openW = deskCols * xStep;
+    const openD = Math.ceil(rows/2) * pairGap + 0.6;
+    const wing = 5.4;
+    const LW = openW + 1.0 + wing;
+    const LD = Math.max(openD + 1.4, 10);
+
+    const sufs = this.SUFFIXES.slice().sort(() => rnd() - 0.5);
+    let si = 0;
+    const statusOf = (extraOff) => {
+      const r = rnd();
+      if (r < 0.80) return 'online';
+      if (r < 0.885) return 'alert';
+      if (r < 0.955) return 'offline';
+      return 'unknown';
+    };
+
+    // ----- workstations -----
+    for (let i=0;i<m.ws;i++){
+      const col = i % deskCols, row = Math.floor(i / deskCols);
+      const pair = Math.floor(row/2), inPair = row % 2;
+      const gx = ox + col * xStep;
+      const gy = oy + pair * pairGap + inPair * inGap;
+      const facing = inPair === 0 ? 'S' : 'N';
+      const type = rnd() < 0.20 ? 'laptop' : 'desktop';
+      const status = statusOf();
+      const suf = sufs[si++ % sufs.length];
+      devices.push(this.makeDevice(m, m.prefix + '-' + suf, type, status, gx, gy, facing, rnd, { desk:true }));
+    }
+
+    // ----- right wing rooms -----
+    const wingX0 = LW - wing, wingX1 = LW - 0.6;
+    const meeting = { x0: wingX0, y0: 0.8, x1: wingX1, y1: 3.7 };
+    const server  = { x0: wingX0, y0: LD - 4.0, x1: wingX1, y1: LD - 0.7 };
+
+    // ----- server / network room devices -----
+    const rackXs = [server.x0 + 1.0, server.x0 + 2.3, server.x0 + 3.6];
+    const rackY = server.y0 + 0.9;
+    let slot = 0;
+    const placeRack = (name, type) => {
+      const rk = Math.floor(slot / 4) % rackXs.length;
+      const within = slot % 4;
+      const gx = rackXs[rk];
+      const gy = rackY + within * 0.0; // single column rack; vertical via z later
+      slot++;
+      const status = type === 'server' ? (rnd()<0.9?'online':'alert') : (rnd()<0.93?'online':'alert');
+      const d = this.makeDevice(m, name, type, status, gx, gy, 'S', rnd, { rack:true, rackIndex:rk, slot:within });
+      return d;
+    };
+    for (let s=0;s<m.servers;s++) devices.push(placeRack(m.prefix + '-SRV' + this.pad(s+1), 'server'));
+    for (let s=0;s<m.switches;s++) devices.push(placeRack(m.prefix + '-SW' + this.pad(s+1), 'switch'));
+    devices.push(placeRack(m.prefix + '-RTR01', 'router'));
+    devices.push(placeRack(m.prefix + '-FW01', 'firewall'));
+    devices.push(placeRack(m.prefix + '-UPS01', 'ups'));
+
+    // ----- printers (open space) -----
+    const printers = [ {gx: ox + openW - 0.6, gy: oy + 0.2}, {gx: ox + 0.2, gy: oy + openD - 1.2} ];
+    const nPr = m.ws > 20 ? 2 : 1;
+    for (let p=0;p<nPr;p++){ const pp=printers[p]; devices.push(this.makeDevice(m, m.prefix + '-MFP' + this.pad(p+1), 'printer', rnd()<0.85?'online':'alert', pp.gx, pp.gy, 'S', rnd, { floor:true })); }
+
+    // ----- wifi APs (ceiling) -----
+    const aps = [ {gx: ox + openW*0.35, gy: oy + 0.3}, {gx: ox + openW*0.7, gy: oy + openD*0.6} ];
+    const nAp = m.ws > 16 ? 2 : 1;
+    for (let a=0;a<nAp;a++){ const ap=aps[a]; devices.push(this.makeDevice(m, m.prefix + '-AP' + this.pad(a+1), 'wifi', 'online', ap.gx, ap.gy, 'S', rnd, { ceiling:true })); }
+
+    // ----- reception desk -----
+    const recep = { gx: ox + 0.2, gy: LD - 1.8 };
+    devices.push(this.makeDevice(m, m.prefix + '-RECEPTION', rnd()<0.5?'desktop':'laptop', 'online', recep.gx, recep.gy, 'N', rnd, { desk:true, reception:true }));
+
+    // guarantee unique ids (names can repeat) for stable React keys / selection
+    devices.forEach((d,i)=>{ d.id = d.name + '__' + i; });
+    return { meta:m, devices, LW, LD, openW, openD, ox, oy, meeting, server, recep };
+  }
+
+  makeDevice(m, name, type, status, gx, gy, facing, rnd, layout){
+    const isInfra = ['server','switch','router','firewall','ups'].includes(type);
+    let model, os;
+    if (type==='laptop'){ model=this.LAPTOP_MODELS[Math.floor(rnd()*this.LAPTOP_MODELS.length)]; os=this.OS_DESKTOP[Math.floor(rnd()*2)]; }
+    else if (type==='desktop'){ model=this.DESKTOP_MODELS[Math.floor(rnd()*this.DESKTOP_MODELS.length)]; os=this.OS_DESKTOP[Math.floor(rnd()*2)]; }
+    else if (type==='server'){ model=this.SERVER_MODELS[Math.floor(rnd()*this.SERVER_MODELS.length)]; os= model.indexOf('Nutanix')>=0?'Windows Server 2019 / AHV':'Windows Server 2022'; }
+    else if (type==='switch'){ model=this.SWITCH_MODELS[Math.floor(rnd()*this.SWITCH_MODELS.length)]; os='IOS / ArubaOS'; }
+    else if (type==='router'){ model='Cisco ISR 1100'; os='Cisco IOS-XE'; }
+    else if (type==='firewall'){ model='Fortinet FortiGate 60F'; os='FortiOS 7.4'; }
+    else if (type==='ups'){ model='APC Smart-UPS 3000'; os='—'; }
+    else if (type==='printer'){ model='HP LaserJet MFP M428'; os='Firmware 4.12'; }
+    else if (type==='wifi'){ model='Ubiquiti UniFi U6-Pro'; os='UniFi 7.5'; }
+
+    const host = name.split('-').pop();
+    const user = (type==='desktop'||type==='laptop')
+      ? this.LAST[Math.floor(rnd()*this.LAST.length)] + ' ' + this.FIRST[Math.floor(rnd()*this.FIRST.length)]
+      : '—';
+    let ipHost = isInfra ? (type==='server'?10:type==='switch'?(20+Math.floor(rnd()*9)):type==='router'?1:type==='firewall'?2:9)
+                         : (30 + Math.floor(rnd()*220));
+    if (status==='unknown') ipHost = null;
+    const ip = status==='unknown' ? '169.254.' + (Math.floor(rnd()*250)) + '.' + (Math.floor(rnd()*250))
+             : m.subnet + '.' + ipHost;
+    const mac = Array.from({length:6}, () => this.pad(Math.floor(rnd()*256).toString(16))).join(':');
+    const lastSeen = this.lastSeenFor(status, rnd);
+    const av = rnd()<0.7 ? 'Microsoft Defender' : 'Bitdefender GravityZone';
+    const alerts = this.alertsFor(status, name, rnd);
+
+    return {
+      id: name, name, type, status, gx, gy, facing, layout, model, os, user, ip, mac,
+      typeLabel: this.TYPE_LABEL[type], statusLabel: this.STATUS_LABEL[status], statusColor: this.STATUS_COLOR[status],
+      domain: 'CASINO.LOCAL', av, agent: '25.2.6.442', lastSeen, lastInv: this.dateStr(rnd, 9),
+      site: m.name, alerts, isInfra,
+    };
+  }
+
+  lastSeenFor(status, rnd){
+    if (status==='online') return '11/06/2026 ' + this.pad(8+Math.floor(rnd()*9)) + ':' + this.pad(Math.floor(rnd()*60));
+    if (status==='alert') return '11/06/2026 ' + this.pad(7+Math.floor(rnd()*3)) + ':' + this.pad(Math.floor(rnd()*60));
+    if (status==='offline') return (rnd()<0.5?'05/06/2026 ':'29/05/2026 ') + this.pad(9+Math.floor(rnd()*8)) + ':' + this.pad(Math.floor(rnd()*60));
+    return '19/05/2026 16:01';
+  }
+  dateStr(rnd, dayMax){ return this.pad(1+Math.floor(rnd()*dayMax)) + '/06/2026'; }
+  alertsFor(status, name, rnd){
+    const a = [];
+    if (status==='offline') a.push({ level:'offline', color:'#ef4444', msg:'Poste injoignable — hors ligne', date: this.lastSeenFor('offline', rnd) });
+    if (status==='alert'){
+      a.push({ level:'alert', color:'#f59e0b', msg: rnd()<0.5?'Disque système > 90% utilisé':'Antivirus : définitions obsolètes', date:'10/06/2026 ' + this.pad(8+Math.floor(rnd()*9)) + ':' + this.pad(Math.floor(rnd()*60)) });
+    }
+    if (status==='unknown') a.push({ level:'unknown', color:'#9ca3af', msg:'Adresse APIPA — pas de bail DHCP', date:'19/05/2026 16:01' });
+    if (rnd()<0.4) a.push({ level:'info', color:'#3b82f6', msg:'Inventaire matériel mis à jour', date: this.dateStr(rnd,9) + ' ' + this.pad(6+Math.floor(rnd()*6)) + ':' + this.pad(Math.floor(rnd()*60)) });
+    return a;
+  }
+
+  // ---------- iso projection (with orientation) ----------
+  effDims(L){ return this.state.orientation % 2 === 0 ? { EW:L.LW, ED:L.LD } : { EW:L.LD, ED:L.LW }; }
+  eff(gx, gy, L){
+    const o = this.state.orientation;
+    if (o===0) return [gx, gy];
+    if (o===1) return [gy, L.LW - gx];
+    if (o===2) return [L.LW - gx, L.LD - gy];
+    return [L.LD - gy, gx];
+  }
+  computeOrigin(L){
+    const { EW, ED } = this.effDims(L);
+    // center of effective floor in raw iso (origin 0,0)
+    const cx = (EW/2 - ED/2) * this.TW;
+    const cy = (EW/2 + ED/2) * this.TH;
+    this._OX = 800 - cx; this._OY = 360 - cy; this._L = L;
+  }
+  P(gx, gy, gz=0){
+    const [ex, ey] = this.eff(gx, gy, this._L);
+    return { x: this._OX + (ex - ey) * this.TW, y: this._OY + (ex + ey) * this.TH - gz };
+  }
+  Praw(ex, ey, gz=0){ return { x: this._OX + (ex - ey) * this.TW, y: this._OY + (ex + ey) * this.TH - gz }; }
+  pts(a){ return a.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' '); }
+  lerp(p,q,t){ return { x:p.x+(q.x-p.x)*t, y:p.y+(q.y-p.y)*t }; }
+
+  // logical cuboid (rotates with content)
+  box(gx, gy, w, d, z0, z1, color, key){
+    const T00=this.P(gx,gy,z1), T10=this.P(gx+w,gy,z1), T11=this.P(gx+w,gy+d,z1), T01=this.P(gx,gy+d,z1);
+    const B10=this.P(gx+w,gy,z0), B11=this.P(gx+w,gy+d,z0), B01=this.P(gx,gy+d,z0);
+    return React.createElement('g',{key},[
+      React.createElement('polygon',{key:'r',points:this.pts([T10,T11,B11,B10]),fill:this.shade(color,-0.30)}),
+      React.createElement('polygon',{key:'l',points:this.pts([T01,T11,B11,B01]),fill:this.shade(color,-0.14)}),
+      React.createElement('polygon',{key:'t',points:this.pts([T00,T10,T11,T01]),fill:this.shade(color,0.10)}),
+    ]);
+  }
+
+  // ---------- furniture ----------
+  haloEl(gx, gy, color, online, key){
+    const c = this.P(gx, gy, 0);
+    return React.createElement('ellipse', { key, cx:c.x, cy:c.y, rx:19, ry:10, fill:color, opacity:0.4, filter:'url(#haloBlur)',
+      style: online ? { transformOrigin:`${c.x}px ${c.y}px`, animation:'halo-pulse 2.6s ease-in-out infinite' } : null });
+  }
+
+  screenFace(mx, my, w, z0, z1, color, key){
+    const yf = my + 0.05;
+    const p = (u,v) => this.P(mx + 0.04 + u*(w-0.08), yf, z0 + 0.8 + v*((z1-z0)-1.8));
+    return React.createElement('polygon',{ key, points:this.pts([p(0,0),p(1,0),p(1,1),p(0,1)]),
+      fill:this.shade(color,0.28), opacity:0.95, filter:'url(#ledGlow)' });
+  }
+
+  plantEl(gx, gy, key){
+    const els = [];
+    els.push(this.box(gx, gy, 0.17, 0.17, 0, 5, '#b07a47', key+'pot'));
+    const c = this.P(gx+0.085, gy+0.085, 7);
+    els.push(React.createElement('circle',{key:key+'a',cx:c.x,cy:c.y-4,r:5.4,fill:'#2f8f4f'}));
+    els.push(React.createElement('circle',{key:key+'b',cx:c.x-3.5,cy:c.y-1,r:4.3,fill:'#3aa05c'}));
+    els.push(React.createElement('circle',{key:key+'c',cx:c.x+3.5,cy:c.y-1.5,r:4.3,fill:'#268a46'}));
+    els.push(React.createElement('circle',{key:key+'d',cx:c.x,cy:c.y-7,r:3.6,fill:'#46b067'}));
+    return els;
+  }
+
+  workstation(d){
+    const els = [];
+    const { gx, gy, facing, statusColor, status, type, id } = d;
+    const online = status==='online';
+    const X = gx - 0.05, Y = gy;
+    // contact shadow
+    const sh = this.P(X+0.47, Y+0.28, 0);
+    els.push(React.createElement('ellipse',{key:'ao',cx:sh.x,cy:sh.y,rx:24,ry:12,fill:'#28303f',opacity:0.18,filter:'url(#softSh)'}));
+    // status halo
+    els.push(this.haloEl(X+0.47, Y+0.26, statusColor, online, 'halo'));
+    // chair (seat + back + base)
+    const chY = facing==='S' ? Y - 0.44 : Y + 0.66;
+    const chC = this.P(X+0.46, chY+0.17, 0);
+    els.push(React.createElement('ellipse',{key:'chb',cx:chC.x,cy:chC.y,rx:7,ry:3.4,fill:'#1f2735',opacity:0.45}));
+    els.push(this.box(X+0.30, chY, 0.33, 0.33, 5, 8.5, '#3c4a5e', 'cs'));
+    els.push(this.box(X+0.30, facing==='S'?chY-0.02:chY+0.31, 0.33, 0.06, 8.5, 20, '#2c3647', 'cbk'));
+    // desk + front apron
+    els.push(this.box(X, Y, 0.96, 0.54, 8, 10.6, '#caa57c', 'desk'));
+    els.push(this.box(X, Y+0.48, 0.96, 0.06, 2.5, 8, this.shade('#caa57c',-0.28), 'apron'));
+    // monitor
+    const mY = Y + 0.32;
+    els.push(this.box(X+0.36, mY+0.02, 0.05, 0.24, 10.6, 13, '#222a38', 'mstand'));
+    els.push(this.box(X+0.20, mY, 0.44, 0.05, 13, 25.5, '#1a212e', 'mon'));
+    els.push(this.screenFace(X+0.20, mY, 0.44, 13, 25.5, statusColor, 'scr'));
+    // keyboard
+    els.push(this.box(X+0.22, Y+0.07, 0.4, 0.16, 10.6, 11.3, '#e9edf3', 'kb'));
+    // tower (desktop) or laptop
+    if (type==='desktop'){
+      els.push(this.box(X+0.81, Y+0.12, 0.12, 0.3, 0, 9.5, '#2b3440', 'tw'));
+      const pw=this.P(X+0.83, Y+0.14, 7); els.push(React.createElement('circle',{key:'pw',cx:pw.x,cy:pw.y,r:1.6,fill:online?'#4ade80':'#64748b',filter:'url(#ledGlow)'}));
+    } else {
+      els.push(this.box(X+0.30, Y+0.10, 0.3, 0.2, 10.6, 11, '#3a4555', 'lap'));
+      els.push(this.box(X+0.30, Y+0.10, 0.3, 0.04, 11, 15.5, '#1c2430', 'lapscr'));
+    }
+    // occasional desk plant
+    if (this.hash(id) % 4 === 0){ this.plantEl(X+0.82, Y+0.40, 'pl').forEach(e=>els.push(e)); }
+    return els;
+  }
+
+  rackUnit(d){
+    // place a small lit unit on a rack; rack itself drawn by room. height by slot
+    const els = [];
+    const baseZ = 6 + d.layout.slot * 13;
+    const gx = d.gx, gy = d.gy;
+    els.push(this.haloEl(gx+0.3, gy+0.3, d.statusColor, d.status==='online', 'halo'));
+    els.push(this.box(gx, gy, 0.62, 0.5, baseZ, baseZ+11, this.shade('#2a3242', d.layout.slot%2?0.05:-0.05), 'u'));
+    // LED
+    const led = this.P(gx+0.07, gy+0.05, baseZ+5);
+    els.push(React.createElement('circle',{key:'led', cx:led.x, cy:led.y, r:2.6, fill:d.statusColor, filter:'url(#ledGlow)',
+      style: d.status==='online'?{animation:'led-blink 1.8s ease-in-out infinite'}:null }));
+    // front slit detail
+    const f0=this.P(gx+0.12,gy,baseZ+8), f1=this.P(gx+0.55,gy,baseZ+8);
+    els.push(React.createElement('line',{key:'slit',x1:f0.x,y1:f0.y,x2:f1.x,y2:f1.y,stroke:'#4a566c',strokeWidth:1.4,opacity:0.7}));
+    return els;
+  }
+
+  printerEl(d){
+    const els=[]; const {gx,gy}=d;
+    els.push(this.haloEl(gx+0.25, gy+0.25, d.statusColor, d.status==='online','halo'));
+    els.push(this.box(gx, gy, 0.5, 0.46, 0, 13, '#e7ebf1', 'body'));
+    els.push(this.box(gx+0.05, gy+0.06, 0.4, 0.34, 13, 16, '#cfd6e0', 'top'));
+    const t=this.P(gx+0.1,gy+0.1,15); els.push(React.createElement('rect',{key:'p',x:t.x,y:t.y-1,width:9,height:3,fill:'#9aa6ba'}));
+    return els;
+  }
+
+  wifiEl(d){
+    const els=[]; const {gx,gy}=d;
+    const c=this.P(gx,gy,66);
+    els.push(React.createElement('circle',{key:'puck',cx:c.x,cy:c.y,r:7,fill:'#eef2f8',stroke:'#c2ccdb',strokeWidth:1}));
+    els.push(React.createElement('circle',{key:'led',cx:c.x,cy:c.y,r:2.4,fill:d.statusColor,filter:'url(#ledGlow)',style:{animation:'led-blink 2.2s ease-in-out infinite'}}));
+    // signal arcs
+    els.push(React.createElement('circle',{key:'r1',cx:c.x,cy:c.y,r:12,fill:'none',stroke:d.statusColor,strokeWidth:1,opacity:0.25}));
+    return els;
+  }
+
+  deviceGroup(d){
+    let inner;
+    if (d.type==='printer') inner = this.printerEl(d);
+    else if (d.type==='wifi') inner = this.wifiEl(d);
+    else if (d.isInfra) inner = this.rackUnit(d);
+    else inner = this.workstation(d);
+    const selected = this.state.selectedId === d.id;
+    if (selected){
+      const c = this.P(d.gx+0.3, d.gy+0.3, 0);
+      inner = inner.concat([ React.createElement('circle',{key:'selring',cx:c.x,cy:c.y,r:24,fill:'none',stroke:d.statusColor,strokeWidth:2.4,opacity:0.9}) ]);
+    }
+    return React.createElement('g', {
+      key:'dev-'+d.id, 'data-device': d.id,
+      onMouseEnter:(e)=>this.showTip(d,e), onMouseMove:(e)=>this.moveTip(e), onMouseLeave:()=>this.hideTip(),
+      onClick:(e)=>{ e.stopPropagation(); this.setState({ selectedId:d.id }); },
+    }, inner);
+  }
+
+  // ---------- rooms / shell ----------
+  glassWall(ax, ay, bx, by, h, key){
+    // vertical translucent panel from a->b at height h with frame
+    const A0=this.P(ax,ay,0), B0=this.P(bx,by,0), A1=this.P(ax,ay,h), B1=this.P(bx,by,h);
+    return React.createElement('g',{key},[
+      React.createElement('polygon',{key:'g',points:this.pts([A1,B1,B0,A0]),fill:'#bcd4e6',opacity:0.30}),
+      React.createElement('line',{key:'top',x1:A1.x,y1:A1.y,x2:B1.x,y2:B1.y,stroke:'#dfe9f3',strokeWidth:2}),
+      React.createElement('line',{key:'pa',x1:A0.x,y1:A0.y,x2:A1.x,y2:A1.y,stroke:'#aebfd2',strokeWidth:1.5}),
+      React.createElement('line',{key:'pb',x1:B0.x,y1:B0.y,x2:B1.x,y2:B1.y,stroke:'#aebfd2',strokeWidth:1.5}),
+    ]);
+  }
+  roomFloor(r, color, key){
+    return React.createElement('polygon',{key,points:this.pts([this.P(r.x0,r.y0),this.P(r.x1,r.y0),this.P(r.x1,r.y1),this.P(r.x0,r.y1)]),fill:color,opacity:0.9});
+  }
+  roomLabel(r, text, color, key){
+    const c=this.P((r.x0+r.x1)/2,(r.y0+r.y1)/2, 0);
+    return React.createElement('text',{key,x:c.x,y:c.y,textAnchor:'middle',style:{fontSize:'11px',fontWeight:700,fill:color,letterSpacing:'1px',opacity:0.8}},text);
+  }
+
+  buildShell(L){
+    const { EW, ED } = this.effDims(L);
+    const els = [];
+    const F00=this.Praw(0,0,0), F10=this.Praw(EW,0,0), F11=this.Praw(EW,ED,0), F01=this.Praw(0,ED,0);
+    els.push(React.createElement('polygon',{key:'floorsh',points:this.pts([F00,F10,F11,F01]),fill:'#8e9bb0',filter:'url(#floorShadow)'}));
+    els.push(React.createElement('polygon',{key:'floor',points:this.pts([F00,F10,F11,F01]),fill:'#b8c2d2'}));
+    // faint tiles
+    for(let i=0;i<=EW;i++){ const a=this.Praw(i,0),b=this.Praw(i,ED); els.push(React.createElement('line',{key:'tx'+i,x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:'#a6b0c2',strokeWidth:0.5,opacity:0.45})); }
+    for(let j=0;j<=ED;j++){ const a=this.Praw(0,j),b=this.Praw(EW,j); els.push(React.createElement('line',{key:'ty'+j,x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:'#a6b0c2',strokeWidth:0.5,opacity:0.45})); }
+    // overhead light wash on floor
+    els.push(React.createElement('polygon',{key:'floorwash',points:this.pts([F00,F10,F11,F01]),fill:'url(#floorWash)'}));
+
+    const WH=72, SILL=13;
+    const wall = (ax,ay,bx,by,h,k,fill,topStroke) => {
+      const A0=this.Praw(ax,ay,0),B0=this.Praw(bx,by,0),A1=this.Praw(ax,ay,h),B1=this.Praw(bx,by,h);
+      els.push(React.createElement('polygon',{key:'wall'+k,points:this.pts([A1,B1,B0,A0]),fill}));
+      els.push(React.createElement('line',{key:'wt'+k,x1:A1.x,y1:A1.y,x2:B1.x,y2:B1.y,stroke:topStroke||'#ffffff',strokeWidth:2.4}));
+    };
+    // back glazed curtain walls
+    wall(0,0,EW,0,WH,'bl','url(#glassGrad)','#eef5fc');
+    wall(0,0,0,ED,WH,'br','url(#glassGrad2)','#dde8f4');
+    // skirting (metal base track)
+    wall(0,0,EW,0,5,'skbl','#6f7d93'); wall(0,0,0,ED,5,'skbr','#5e6b80');
+    // transom (mid horizontal frame)
+    let a=this.Praw(0,0,WH*0.52), b=this.Praw(EW,0,WH*0.52);
+    els.push(React.createElement('line',{key:'trbl',x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:'#e6eef7',strokeWidth:2,opacity:0.9}));
+    a=this.Praw(0,0,WH*0.52); b=this.Praw(0,ED,WH*0.52);
+    els.push(React.createElement('line',{key:'trbr',x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:'#d6e2f0',strokeWidth:2,opacity:0.9}));
+    // vertical mullions
+    for(let i=1;i<EW;i++){ const p0=this.Praw(i,0,5),p1=this.Praw(i,0,WH-3); els.push(React.createElement('line',{key:'mlx'+i,x1:p0.x,y1:p0.y,x2:p1.x,y2:p1.y,stroke:'#eaf1f9',strokeWidth:1.5,opacity:0.85})); }
+    for(let j=1;j<ED;j++){ const p0=this.Praw(0,j,5),p1=this.Praw(0,j,WH-3); els.push(React.createElement('line',{key:'mly'+j,x1:p0.x,y1:p0.y,x2:p1.x,y2:p1.y,stroke:'#dce7f3',strokeWidth:1.5,opacity:0.85})); }
+    // diagonal glass reflection streaks
+    for(let i=1;i<EW-1;i+=2){ const p0=this.Praw(i,0,WH-6),p1=this.Praw(i+0.7,0,8); els.push(React.createElement('line',{key:'rfx'+i,x1:p0.x,y1:p0.y,x2:p1.x,y2:p1.y,stroke:'#ffffff',strokeWidth:3,opacity:0.16})); }
+    // top cornice
+    a=this.Praw(0,0,WH); b=this.Praw(EW,0,WH); els.push(React.createElement('line',{key:'cnbl',x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:'#cfd9e6',strokeWidth:3.5}));
+    a=this.Praw(0,0,WH); b=this.Praw(0,ED,WH); els.push(React.createElement('line',{key:'cnbr',x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:'#bcc8d8',strokeWidth:3.5}));
+    // front wood sills (cutaway)
+    wall(EW,0,EW,ED,SILL,'fr','#bd9460');
+    wall(0,ED,EW,ED,SILL,'ff','#a9824f');
+    // sill top highlight
+    a=this.Praw(EW,0,SILL); b=this.Praw(EW,ED,SILL); els.push(React.createElement('line',{key:'slh1',x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:'#d9b485',strokeWidth:2}));
+    a=this.Praw(0,ED,SILL); b=this.Praw(EW,ED,SILL); els.push(React.createElement('line',{key:'slh2',x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:'#c79f6e',strokeWidth:2}));
+    return React.createElement('g',{key:'shell'},els);
+  }
+
+  buildZones(L){
+    const { EW, ED } = this.effDims(L);
+    const els = [];
+    const pools = [[EW*0.30,ED*0.28],[EW*0.62,ED*0.30],[EW*0.30,ED*0.62],[EW*0.60,ED*0.60],[EW*0.85,ED*0.22],[EW*0.82,ED*0.82]];
+    pools.forEach((p,i)=>{ const c=this.Praw(p[0],p[1],0); els.push(React.createElement('ellipse',{key:'lp'+i,cx:c.x,cy:c.y,rx:118,ry:60,fill:'url(#lightPool)'})); });
+    return React.createElement('g',{key:'zones'},els);
+  }
+
+  buildRooms(L){
+    const els = [];
+    // ===== meeting room =====
+    const mr=L.meeting;
+    els.push(this.roomFloor(mr,'#c4cdda','mrf'));
+    // carpet rug under table
+    els.push(React.createElement('polygon',{key:'mrug',points:this.pts([this.P(mr.x0+0.4,mr.y0+0.5),this.P(mr.x1-0.4,mr.y0+0.5),this.P(mr.x1-0.4,mr.y1-0.4),this.P(mr.x0+0.4,mr.y1-0.4)]),fill:'#8fa6c4',opacity:0.5}));
+    // wall display screen on back wall of meeting room
+    const sx=(mr.x0+mr.x1)/2;
+    els.push(React.createElement('polygon',{key:'mscr',points:this.pts([this.P(sx-0.6,mr.y0,18),this.P(sx+0.6,mr.y0,18),this.P(sx+0.6,mr.y0,34),this.P(sx-0.6,mr.y0,34)]),fill:'#1f6fd4',opacity:0.85,filter:'url(#ledGlow)'}));
+    // table + chairs
+    const tcx=sx-0.6, tcy=(mr.y0+mr.y1)/2-0.4;
+    els.push(this.box(tcx,tcy,1.2,0.7,9,11,'#caa676','mtable'));
+    els.push(this.box(tcx,tcy+0.64,1.2,0.06,3,9,this.shade('#caa676',-0.28),'mtap'));
+    [[-0.2,-0.5],[0.5,-0.5],[-0.2,0.82],[0.5,0.82]].forEach((o,i)=>{els.push(this.box(tcx+0.2+o[0],tcy+0.1+o[1],0.3,0.3,5,8,'#3c4a5e','mch'+i)); els.push(this.box(tcx+0.2+o[0],tcy+0.1+o[1]+(o[1]<0?-0.02:0.28),0.3,0.05,8,17,'#2c3647','mcbk'+i));});
+    els.push(this.glassWall(mr.x0,mr.y1,mr.x1,mr.y1,46,'mrw1'));
+    els.push(this.glassWall(mr.x0,mr.y0,mr.x0,mr.y1,46,'mrw2'));
+    els.push(this.roomLabel(mr,'SALLE RÉUNION','#3d4a60','mrl'));
+
+    // ===== server room =====
+    const sr=L.server;
+    els.push(this.roomFloor(sr,'#c0ccdd','srf'));
+    // raised technical floor grid
+    for(let gx=Math.ceil(sr.x0); gx<sr.x1; gx++){ const a=this.P(gx,sr.y0),b=this.P(gx,sr.y1); els.push(React.createElement('line',{key:'sfx'+gx,x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:'#8fa0b8',strokeWidth:0.7,opacity:0.6})); }
+    for(let gy=Math.ceil(sr.y0); gy<sr.y1; gy++){ const a=this.P(sr.x0,gy),b=this.P(sr.x1,gy); els.push(React.createElement('line',{key:'sfy'+gy,x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:'#8fa0b8',strokeWidth:0.7,opacity:0.6})); }
+    // rack cabinets
+    const rackXs=[sr.x0+0.85,sr.x0+2.15,sr.x0+3.45];
+    rackXs.forEach((rx,i)=>{ els.push(this.box(rx,sr.y0+0.7,0.78,0.62,0,58,'#1e2533','rack'+i));
+      // vented door highlight
+      const d0=this.P(rx+0.1,sr.y0+1.32,6),d1=this.P(rx+0.68,sr.y0+1.32,6); els.push(React.createElement('line',{key:'rdv'+i,x1:d0.x,y1:d0.y,x2:d1.x,y2:d1.y,stroke:'#3a475c',strokeWidth:1.4,opacity:0.7})); });
+    // overhead cable tray
+    const ct0=this.P(sr.x0+0.5,sr.y0+0.4,60), ct1=this.P(sr.x1-0.5,sr.y0+0.4,60);
+    els.push(React.createElement('line',{key:'ctray',x1:ct0.x,y1:ct0.y,x2:ct1.x,y2:ct1.y,stroke:'#6b7894',strokeWidth:3,opacity:0.6}));
+    els.push(this.glassWall(sr.x0,sr.y0,sr.x1,sr.y0,52,'srw1'));
+    els.push(this.glassWall(sr.x0,sr.y0,sr.x0,sr.y1,52,'srw2'));
+    els.push(this.roomLabel(sr,'SALLE SERVEUR','#33415a','srl'));
+    return React.createElement('g',{key:'rooms'},els);
+  }
+
+  buildColumns(L){
+    const els=[]; const { EW, ED } = this.effDims(L);
+    const cols=[[EW*0.42, ED*0.34],[EW*0.42, ED*0.66]];
+    cols.forEach((c,i)=>{
+      const b=this.Praw(c[0],c[1],0), t=this.Praw(c[0],c[1],62);
+      els.push(React.createElement('ellipse',{key:'cs'+i,cx:b.x,cy:b.y,rx:9,ry:4.5,fill:'#7c8aa0',opacity:0.4,filter:'url(#softSh)'}));
+      els.push(React.createElement('line',{key:'cl'+i,x1:b.x,y1:b.y,x2:t.x,y2:t.y,stroke:'#e3e9f1',strokeWidth:9,strokeLinecap:'round'}));
+      els.push(React.createElement('line',{key:'ch'+i,x1:b.x-2,y1:b.y,x2:t.x-2,y2:t.y,stroke:'#c6d0de',strokeWidth:2.4,strokeLinecap:'round'}));
+    });
+    return React.createElement('g',{key:'cols'},els);
+  }
+
+  // ---------- scene ----------
+  buildScene(){
+    const L = this.sites[this.state.siteId];
+    this.computeOrigin(L);
+    const objs = [];
+    // depth: by effective gx+gy of object anchor
+    const depth = (gx,gy) => { const [ex,ey]=this.eff(gx,gy,L); return ex+ey; };
+    L.devices.forEach(d => objs.push({ z: depth(d.gx,d.gy) + (d.type==='wifi'?5:0), el: this.deviceGroup(d) }));
+    // decorative plants (depth-sorted with furniture)
+    const decor = [
+      { gx:L.ox-0.7, gy:L.oy-0.7, k:'dp1' },
+      { gx:L.LW-0.9, gy:L.oy-0.7, k:'dp2' },
+      { gx:L.ox-0.7, gy:L.LD-1.1, k:'dp3' },
+    ];
+    decor.forEach(p => objs.push({ z: depth(p.gx,p.gy), el: React.createElement('g',{key:p.k}, this.plantEl(p.gx,p.gy,p.k)) }));
+    objs.sort((a,b)=>a.z-b.z);
+
+    return React.createElement('g',{key:'scene-'+this.state.siteId+'-'+this.state.orientation},[
+      this.buildShell(L),
+      this.buildZones(L),
+      this.buildRooms(L),
+      this.buildColumns(L),
+      ...objs.map(o=>o.el),
+    ]);
+  }
+
+  // ---------- tooltip (direct DOM, no rerender) ----------
+  tipRow(k,v){ return `<div style="display:flex;justify-content:space-between;gap:14px;padding:3px 0;"><span style="color:#8a96ad;font-size:11px;">${k}</span><span style="color:#e7edf7;font-size:11.5px;font-weight:600;text-align:right;">${v}</span></div>`; }
+  showTip(d, e){
+    const tip=document.getElementById('twinTip'); if(!tip) return;
+    tip.innerHTML =
+      `<div style="padding:11px 13px 9px;background:linear-gradient(135deg,${d.statusColor}22,transparent);border-bottom:1px solid rgba(120,140,180,0.18);">
+        <div style="display:flex;align-items:center;gap:7px;">
+          <span style="width:9px;height:9px;border-radius:50%;background:${d.statusColor};box-shadow:0 0 8px ${d.statusColor};"></span>
+          <span style="color:#fff;font-size:13px;font-weight:700;">${d.name}</span>
+        </div>
+        <div style="color:#9fb0cc;font-size:10.5px;margin-top:2px;text-transform:uppercase;letter-spacing:0.6px;">${d.typeLabel} · ${d.statusLabel}</div>
+      </div>
+      <div style="padding:9px 13px 11px;">
+        ${this.tipRow('Adresse IP', d.ip)}
+        ${this.tipRow('Utilisateur', d.user)}
+        ${this.tipRow('Site', d.site)}
+        ${this.tipRow('Système', d.os)}
+        ${this.tipRow('Dernière connexion', d.lastSeen)}
+      </div>`;
+    tip.style.opacity='1'; tip.style.transform='translateY(0)';
+    this.moveTip(e);
+  }
+  moveTip(e){
+    const tip=document.getElementById('twinTip'); if(!tip) return;
+    let x=e.clientX+16, y=e.clientY+16;
+    const w=tip.offsetWidth||250, h=tip.offsetHeight||180;
+    if(x+w>window.innerWidth-12) x=e.clientX-w-16;
+    if(y+h>window.innerHeight-12) y=e.clientY-h-16;
+    tip.style.left=x+'px'; tip.style.top=y+'px';
+  }
+  hideTip(){ const tip=document.getElementById('twinTip'); if(tip){ tip.style.opacity='0'; tip.style.transform='translateY(6px)'; } }
+
+  // ---------- view transform (direct DOM during interaction) ----------
+  applyView(){
+    const vp=document.getElementById('twinViewport');
+    if(vp) vp.setAttribute('transform', this.viewTransformStr());
+  }
+  viewTransformStr(){
+    const { zoom, panX, panY } = this.view;
+    return `translate(800 500) scale(${zoom}) translate(-800 -500) translate(${panX} ${panY})`;
+  }
+  onWheel=(e)=>{ e.preventDefault(); const f=e.deltaY<0?1.12:0.89; this.view.zoom=Math.min(3.2,Math.max(0.5,this.view.zoom*f)); this.applyView(); };
+  onPanStart=(e)=>{ this._pan={ x:e.clientX, y:e.clientY, px:this.view.panX, py:this.view.panY }; };
+  onPanMove=(e)=>{ if(!this._pan) return; const k=1/this.view.zoom; this.view.panX=this._pan.px+(e.clientX-this._pan.x)*k*(1600/ (this.refsW()||1600)); this.view.panY=this._pan.py+(e.clientY-this._pan.y)*k*(1000/(this.refsH()||1000)); this.applyView(); };
+  onPanEnd=()=>{ this._pan=null; };
+  refsW(){ const s=document.getElementById('twinSvg'); return s?s.clientWidth:1600; }
+  refsH(){ const s=document.getElementById('twinSvg'); return s?s.clientHeight:1000; }
+  onZoomIn=()=>{ this.view.zoom=Math.min(3.2,this.view.zoom*1.18); this.applyView(); };
+  onZoomOut=()=>{ this.view.zoom=Math.max(0.5,this.view.zoom*0.85); this.applyView(); };
+  onResetView=()=>{ this.view={zoom:1.3,panX:0,panY:0}; this.applyView(); };
+  onRotateLeft=()=>{ this.view={zoom:1.3,panX:0,panY:0}; this.setState({ orientation:(this.state.orientation+3)%4 }); };
+  onRotateRight=()=>{ this.view={zoom:1.3,panX:0,panY:0}; this.setState({ orientation:(this.state.orientation+1)%4 }); };
+
+  componentDidUpdate(){ this.applyView(); }
+  componentDidMount(){ this.applyView(); }
+
+  // ---------- search ----------
+  onSearch=(e)=>{ this.setState({ query:e.target.value }); };
+  searchResults(){
+    const q=(this.state.query||'').trim().toLowerCase();
+    if(q.length<2) return [];
+    const L=this.sites[this.state.siteId];
+    return L.devices.filter(d =>
+      d.name.toLowerCase().includes(q) || (d.ip||'').toLowerCase().includes(q) || (d.user||'').toLowerCase().includes(q)
+    ).slice(0,8);
+  }
+  centerOn(d){
+    const L=this.sites[this.state.siteId]; this.computeOrigin(L);
+    const base=this.P(d.gx+0.3,d.gy+0.3,12);
+    this.view.zoom=Math.max(this.view.zoom,1.5);
+    this.view.panX=800-base.x; this.view.panY=500-base.y;
+    this.setState({ selectedId:d.id, query:'' });
+  }
+
+  // ---------- render ----------
+  renderVals(){
+    const L=this.sites[this.state.siteId];
+    const meta=L.meta;
+    const counts={online:0,alert:0,offline:0,unknown:0};
+    L.devices.forEach(d=>counts[d.status]++);
+
+    const siteTabs=this.SITE_META.map(m=>({
+      short:m.short,
+      onSelect:()=>{ this.view={zoom:1.3,panX:0,panY:0}; this.setState({ siteId:m.id, selectedId:null, query:'' }); },
+      bg: m.id===this.state.siteId ? m.accent : 'transparent',
+      color: m.id===this.state.siteId ? '#fff' : '#9aa6bf',
+    }));
+
+    const res=this.searchResults();
+    const results=res.map(d=>({
+      name:d.name, sub: (d.ip||'—') + (d.user!=='—' ? ' · '+d.user : ''), typeLabel:d.typeLabel, statusColor:d.statusColor,
+      onPick:()=>this.centerOn(d),
+    }));
+
+    const sd=this.state.selectedId ? L.devices.find(x=>x.id===this.state.selectedId) : null;
+    const sel = sd ? {
+      name:sd.name, ip:sd.ip, typeLabel:sd.typeLabel, statusLabel:sd.statusLabel, statusColor:sd.statusColor,
+      accent:meta.accent, accent2:meta.accent2,
+      fields:[
+        {k:'Nom complet', v:sd.name},
+        {k:'Type', v:sd.typeLabel},
+        {k:'Modèle', v:sd.model},
+        {k:'Adresse IP', v:sd.ip},
+        {k:'Adresse MAC', v:sd.mac},
+        {k:'Utilisateur', v:sd.user},
+        {k:'Domaine', v:sd.domain},
+        {k:'Système', v:sd.os},
+        {k:'Antivirus', v:sd.av},
+        {k:'Version agent', v:sd.agent},
+        {k:'Dernière connexion', v:sd.lastSeen},
+        {k:'Dernier inventaire', v:sd.lastInv},
+        {k:'Site', v:sd.site},
+      ],
+      alerts: sd.alerts,
+      noAlerts: sd.alerts.length===0,
+    } : { name:'', ip:'', typeLabel:'', statusLabel:'', statusColor:'#999', accent:meta.accent, accent2:meta.accent2, fields:[], alerts:[], noAlerts:true };
+
+    return {
+      siteName:meta.name, siteTotal:L.devices.length,
+      siteTabs, query:this.state.query,
+      results, hasResults: results.length>0,
+      countOnline:counts.online, countAlert:counts.alert, countOffline:counts.offline, countUnknown:counts.unknown,
+      sceneSvg:this.buildScene(),
+      viewTransform:this.viewTransformStr(),
+      panelOpen: !!sd, sel,
+      onSearch:this.onSearch,
+      onWheel:this.onWheel, onPanStart:this.onPanStart, onPanMove:this.onPanMove, onPanEnd:this.onPanEnd,
+      onZoomIn:this.onZoomIn, onZoomOut:this.onZoomOut, onResetView:this.onResetView,
+      onRotateLeft:this.onRotateLeft, onRotateRight:this.onRotateRight,
+      onClosePanel:()=>this.setState({ selectedId:null }),
+    };
+  }
+}
+</script>
+</body>
+</html>
