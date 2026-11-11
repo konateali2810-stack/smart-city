@@ -1,0 +1,178 @@
+@keyframes star-twinkle {
+  0%, 100% { opacity: 0.25; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+@keyframes aurora-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.5; }
+  50% { transform: translate3d(40px, -20px, 0) scale(1.12); opacity: 0.78; }
+}
+@keyframes moon-breathe {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.06); }
+}
+
+.sky {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.sky-night {
+  background:
+    radial-gradient(ellipse 120% 70% at 50% 100%, rgba(94, 231, 255, 0.10) 0%, rgba(94, 231, 255, 0) 55%),
+    radial-gradient(ellipse 110% 90% at 50% 14%, #54639f 0%, #34406f 40%, #1d2347 78%, #14193a 100%);
+}
+
+.sky-day {
+  background:
+    radial-gradient(ellipse 120% 70% at 50% 100%, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 55%),
+    radial-gradient(ellipse 120% 95% at 50% 12%, #bfe8ff 0%, #9ed3fb 38%, #7fbdf3 70%, #6aa9ec 100%);
+}
+
+.sky-aurora {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  mix-blend-mode: screen;
+  will-change: transform, opacity;
+}
+.sky-aurora-cyan {
+  width: 720px;
+  height: 320px;
+  left: 6%;
+  top: 18%;
+  background: radial-gradient(closest-side, rgba(64, 224, 255, 0.55), rgba(64, 224, 255, 0));
+  animation: aurora-drift 16s ease-in-out infinite;
+}
+.sky-aurora-violet {
+  width: 820px;
+  height: 360px;
+  left: 38%;
+  top: 6%;
+  background: radial-gradient(closest-side, rgba(167, 139, 250, 0.5), rgba(167, 139, 250, 0));
+  animation: aurora-drift 21s ease-in-out infinite reverse;
+}
+.sky-aurora-pink {
+  width: 640px;
+  height: 300px;
+  right: 4%;
+  top: 24%;
+  background: radial-gradient(closest-side, rgba(255, 126, 182, 0.42), rgba(255, 126, 182, 0));
+  animation: aurora-drift 19s ease-in-out infinite;
+}
+
+.sky-moon {
+  position: absolute;
+  top: 9%;
+  left: 78%;
+  width: 96px;
+  height: 96px;
+}
+.sky-moon-glow {
+  position: absolute;
+  inset: -60px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(220, 232, 255, 0.55), rgba(220, 232, 255, 0));
+  animation: moon-breathe 7s ease-in-out infinite;
+}
+.sky-moon-disc {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 38% 36%, #ffffff 0%, #e6edff 45%, #c2cdf0 100%);
+  box-shadow:
+    inset -14px -10px 26px rgba(120, 134, 180, 0.55),
+    0 0 40px rgba(220, 232, 255, 0.45);
+}
+
+.sky-stars {
+  position: absolute;
+  inset: 0;
+}
+.sky-star {
+  position: absolute;
+  border-radius: 50%;
+  animation: star-twinkle ease-in-out infinite;
+  will-change: opacity, transform;
+}
+
+.sky-horizon {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 46%;
+  background: linear-gradient(to top, rgba(20, 25, 58, 0.55) 0%, rgba(20, 25, 58, 0) 100%);
+}
+.sky-horizon-day {
+  background: linear-gradient(to top, rgba(232, 244, 255, 0.6) 0%, rgba(232, 244, 255, 0) 100%);
+}
+
+/* --- Jour : soleil --- */
+@keyframes sun-breathe {
+  0%, 100% { opacity: 0.65; transform: scale(1); }
+  50% { opacity: 0.95; transform: scale(1.07); }
+}
+@keyframes cloud-drift {
+  0% { transform: translateX(-12vw) scale(var(--s, 1)); }
+  100% { transform: translateX(115vw) scale(var(--s, 1)); }
+}
+
+.sky-sun {
+  position: absolute;
+  top: 8%;
+  left: 76%;
+  width: 110px;
+  height: 110px;
+}
+.sky-sun-glow {
+  position: absolute;
+  inset: -90px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 244, 200, 0.85), rgba(255, 233, 150, 0.35) 45%, rgba(255, 233, 150, 0));
+  animation: sun-breathe 7s ease-in-out infinite;
+}
+.sky-sun-disc {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 38%, #fffef4 0%, #fff1b8 50%, #ffd770 100%);
+  box-shadow: 0 0 60px rgba(255, 224, 130, 0.8);
+}
+
+.sky-clouds {
+  position: absolute;
+  inset: 0;
+}
+.sky-cloud {
+  position: absolute;
+  width: 190px;
+  height: 58px;
+  background: #ffffff;
+  border-radius: 60px;
+  filter: blur(6px);
+  animation: cloud-drift linear infinite;
+  will-change: transform;
+}
+.sky-cloud::before,
+.sky-cloud::after {
+  content: '';
+  position: absolute;
+  background: #ffffff;
+  border-radius: 50%;
+}
+.sky-cloud::before {
+  width: 80px;
+  height: 80px;
+  top: -32px;
+  left: 36px;
+}
+.sky-cloud::after {
+  width: 60px;
+  height: 60px;
+  top: -22px;
+  left: 100px;
+}
